@@ -27,6 +27,8 @@ Document number: D????
 <br/>
 <a href="mailto:ville.voutilainen@gmail.com">Ville Voutilainen</a><br/>
 <a href="mailto:mikael.kilpelainen@gmail.com">Mikael Kilpel&auml;inen</a><br/>
+<a href="mailto:filip.roseen@gmail.com">Filip Ros&eacute;en</a></a><br/>
+<br/>
 2014-07-23<br/>
 </address>
 <hr/>
@@ -38,13 +40,15 @@ Document number: D????
 <li><a href="#Introduction">Introduction</a></li>
 <li><a href="#Example">The Counter-Example</a></li>
 <li><a href="#ExistingCode">Does anyone actually use curly braces on <code>return</code>?</a></li>
+<li><a href="#Illogical">Choosing braces to mean "non-explicit" is illogical</a></li>
 <li><a href="#ExampleTuple">The <code>tuple</code> Counter-Example</a></li>
+<li><a href="#FreedomExample">The Freedom of Speech-Example</a></li>
 <li><a href="#AnotherExample">Another Example</a></li>
 <li><a href="#MoreSmartPointers">More about smart pointers</a></li>
-<li><a href="#Illogical">Choosing braces to mean "non-explicit" is illogical</a></li>
 <li><a href="#Summary">Summary</a></li>
 </ul>
 
+<hr />
 <a name="Introduction"></a><h2>Introduction</h2>
 
 <p>
@@ -130,6 +134,8 @@ instance, we can offer a realistic example where exactly this would happen.
 And it happens very close to our home: by ignoring the <code>explicit</code>
 qualifier of the constructor of a <b>std-defined</b> class type.
 </p>
+
+<hr />
 
 <a name="Example"></a><h2>The Counter-Example</h2>
 
@@ -320,6 +326,8 @@ Once the error is corrected, the correct output of the test is:
 2ns
 </pre></blockquote>
 
+<hr />
+
 <a name="ExistingCode"></a><h2>Does anyone actually use curly braces on <code>return</code>?</h2>
 
 <p>
@@ -347,6 +355,24 @@ These were just the ones we were able to find.  Searching for
 results clearly demonstrate a use that is significantly greater than
 "vanishingly rare."
 </p>
+
+<hr />
+
+<a name="Illogical"</a><h2>Choosing braces to mean "non-explicit" is illogical</h2>
+<p>
+Returning a braced-list has a meaning today. Consider:</p>
+
+<blockquote><pre>
+char f() {int x = 0; return {x};} // error: narrowing conversion of 'x' from 'int' to 'char' inside { }
+</pre></blockquote>
+
+<p>People learn that in order to avoid potentially-corrupting narrowing
+conversions between built-in types, they can use braces. It seems very
+illogical that for library types with explicit conversions, braces
+suddenly bypass similar checking for potentially-corrupting cases!</p>
+
+<hr />
+
 
 <a name="ExampleTuple"></a><h2>The <code>tuple</code> Counter-Example</h2>
 
@@ -427,6 +453,150 @@ reasons that N4074 is now proposed:  To ease the syntax burden on the
 programmer.  But unlike N4074, N3739 never disregards the <code>explicit</code>
 keyword that the programmer has qualified one of his constructors with.
 </p>
+
+<hr />
+
+<a name="FreedomExample"></a><h2>The Freedom of Speech-Example</h2>
+
+<p>
+There are situations where we cannot use any other form of <em>initializer</em>
+than that of a <em>braced-init-list</em> if we don't want to explicitly state
+the type (in a case where the compiler already knows it).
+</p>
+
+<p>
+  By explicitly stating the type we also tell the compiler that it is free to
+  use any <code>explicit</code> constructor, so if N4074 is approved, we will
+  lose the possibility to say that we'd only want a non-explicit constructor to
+  be used when constructing a <em>return-value</em> with more than one value.
+</p>
+
+<h3>Imagine the following implementation</h3>
+
+<pre>
+    int computational_expensive_task (float);
+
+    struct Type1 {
+      explicit Type1 (float x)
+        : m (computational_expensive_task (x))
+      { }
+
+      Type1 (int x)
+        : m (x)
+      { }
+
+      ...
+
+      Type1 (Type1 const&amp;) = default;
+      Type1 (Type1&amp;&amp;)      = default;
+
+      int m;
+    };
+
+    auto f = [](auto expr) -&gt; Type1 {
+      return { expr };
+    };
+
+</pre>
+
+<p>
+In the above we have a <em>lambda</em> named <code>f</code>, which will construct an
+  object of type <code>Type1</code> initialized with <code>expr</code>, but only
+  <b>if</b> such an initialization can happen with the use of a non-explicit
+  constructor. If such initialization isn't possible, a compiler shall issue a
+  diagnostic.
+</p>
+
+<pre>
+    f (123);   //      legal, `Type1` can implicitly be constructed with `int`
+    f (3.14f); // ill-formed, initialization of `Type1` with `float` is explicit
+</pre>
+
+<p>
+  If we'd like to maintain the same behavior with N4094 approved there's not
+  much that needs to be changed, all we need to do is change the
+  <em>return-statement</em> to <code>return expr</code>.
+</p>
+
+<h3>More than one argument to the constructor of <code>Type1</code>?</h3>
+
+<p>
+  But what if some constructors of <code>Type1</code> takes more than one
+  argument? In such case, and with the current revision of the Standard, the
+  only way we can prohibit the use of an <code>explicit</code> constructor is to
+  use a <em>braced-init-list</em>.
+</p>
+
+<h4><code>f_rev1</code></h4>
+
+<pre>
+    auto f_rev1 = [](auto... args) -&gt; Type1 {
+      return { args... };
+    };
+</pre>
+
+<p>
+  <code>f_rev1</code> will however, with the approval of N4074, be allowed to use
+  an explicit constructor. Since our intention was that such a constructor
+  shouldn't be used, we can no longer use the implemenation of
+  <code>f_rev1</code>; our <em>expressiveness</em> has been limited.
+</p>
+
+<p>
+  Does that mean that we are doomed if N4074 goes through? Well, kind of.
+</p>
+
+<h4><code>f_rev2</code></h4>
+
+<pre>
+    auto f_rev2 = [](auto... args) -&gt; Type1 {
+      Type1  x = { args... };
+      return x;
+    };
+</pre>
+
+<p>
+  <code>f_rev2</code> above will be able to prevent the use of an
+  <code>explicit</code> constructor, but compared to the implementation of
+  <code>f_rev1</code> it's less than acceptable; we are doing more work than
+  previously, and it doesn't at all follow the same semantics.
+</p>
+
+<p>
+  <h4>Semantics of <code>f_rev1</code></h4>
+  <ul>
+    <li>
+      construct the <em>return-value</em> with the arguments passed to the lambda.
+    </li>
+  </ul>
+
+  <h4>Semantics of <code>f_rev2</code></h4>
+
+  <ul>
+    <li>
+      construct <code>x</code> of type  <code>Type1</code>, with the arguments
+      passed to the lambda;
+    </li>
+    <li>
+      move/copy-construct the <em>return-value</em> of <code>f_rev2</code> with the
+      <em>xvalue</em> of <code>x</code>.
+    </li>
+  </ul>
+</p>
+
+<h3>Conclusion</h3>
+<p>
+  Implementations such as the above exists in the wild, and allowing N4074 to
+  completely change the semantics of said implementations is the scariest of
+  breaking changes; a change which will completely change the semantics of our
+  code.
+</p>
+<p>
+  It is indeed scary that such a change won't be caught during compilation, if
+  ever; it may only be caught by a very watchful, human, eye.
+</p>
+
+<hr />
 
 <a name="AnotherExample"></a><h2>Another Example</h2>
 
@@ -614,6 +784,8 @@ acceptBigGraphNode({allocateBigGraphNode()});
 but only <b>if</b> the conversion is implicit.
 </p>
 
+<hr />
+
 <a name="MoreSmartPointers"</a><h2>More about smart pointers</h2>
 
 <p>
@@ -668,18 +840,7 @@ be or at the very least should become rare and legacy, especially when
 that change breaks design expectations of tons of libraries.
 </p>
 
-<a name="Illogical"</a><h2>Choosing braces to mean "non-explicit" is illogical</h2>
-<p>
-Returning a braced-list has a meaning today. Consider:</p>
-
-<blockquote><pre>
-char f() {int x = 0; return {x};} // error: narrowing conversion of 'x' from 'int' to 'char' inside { }
-</pre></blockquote>
-
-<p>People learn that in order to avoid potentially-corrupting narrowing
-conversions between built-in types, they can use braces. It seems very
-illogical that for library types with explicit conversions, braces
-suddenly bypass similar checking for potentially-corrupting cases!</p>
+<hr />
 
 <a name="Summary"></a><h2>Summary</h2>
 
