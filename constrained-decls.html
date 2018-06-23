@@ -245,15 +245,19 @@ Whatever x3 = f3();         // See part 2. If Whatever is a type, not deduced.
 operator Sortable auto() { }</code></pre></blockquote>
 
 <p>
-  A &ldquo;<code>Constraint auto</code>&rdquo; cannot be used to indicate that a function declarator has a trailing return type:
+  A &ldquo;<code>Constraint auto</code>&rdquo; cannot be used to indicate that a function declarator has a trailing return type (<code>auto</code> is not deduced in that position):
 </p>
 <blockquote><pre><code>Constraint auto f() -&gt; auto; // ill-formed; shall be the single <i>type-specifier</i> <code>auto</code></code></pre></blockquote>
 
 <p>
-  <code>decltype(auto)</code> can also be constrained:
+  The <code>auto</code> in <code>decltype(auto)</code> does not follow the general rule of being a deduced <code>auto</code>; <code>decltype(auto)</code> is itself indivisible:
 </p>
-<blockquote><pre><code>auto f() -&gt; decltype(Constraint auto);
-decltype(Constraint auto) x = f();</code></pre></blockquote>
+<blockquote><pre><code>auto f() -&gt; decltype(Constraint auto); // ill-formed; <code>decltype(Constraint auto)</code> is not a valid placeholder</code></pre></blockquote>
+
+<p>
+  We do not propose to allow a constraint to be applied to <code>decltype(auto)</code>.
+  It is a separable facility, not needed for the current proposal to be consistent, for which there has been no equivalent in other proposals thus far.
+</p>
 
 <p>
   Structured bindings do deduce <code>auto</code> in some cases; however, the <code>auto</code> is deduced from the whole (and not from the individual components).
