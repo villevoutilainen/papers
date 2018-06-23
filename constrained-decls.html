@@ -82,8 +82,8 @@ Document number: D????
 <ol class="wide">
   <li>A syntax for constrained declarations that is practically a
     &ldquo;constrained <code>auto</code>&rdquo;;
-    the principle being &ldquo;wherever <code>auto</code> goes,
-    a <code>Constraint auto</code> can also (non-recursively) go&rdquo;.
+    the principle being &ldquo;wherever <code>auto</code> is deduced,
+    a <code>Constraint auto</code> can also (non-recursively) be deduced&rdquo;.
     The semantics are to deduce like <code>auto</code> and additionally check a constraint.
     In a nutshell,
     <blockquote><pre><code>void f(Sortable auto x);
@@ -238,7 +238,7 @@ Whatever x3 = f3();         // See part 2. If Whatever is a type, not deduced.
 
 <p>
   In concert with the general approach that &ldquo;<code>Constraint auto</code> goes wherever
-  <code>auto</code> goes&rdquo;, new-expressions and operators work:
+  deduced <code>auto</code> goes&rdquo;, new-expressions and conversion operators work:
 </p>
 <blockquote><pre><code>auto alloc_next() { return new Sortable auto(this-&gt;next_val()); }
 
