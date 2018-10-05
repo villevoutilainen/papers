@@ -300,6 +300,11 @@ Constructible&lt;int&gt; auto x = f();
 
 template &lt;Constructible&lt;int&gt; auto N&gt; void f();</code></pre></blockquote>
 
+<p>
+  Variadic concept identifiers constrain the types deduced for the pack when used to declare a pack (thus adding <code>...</code> to <code>Constraint auto</code> can be a more loaded operation than usual):
+</p>
+<blockquote><pre><code>void f(Homogeneous auto&amp;&amp;... x); // Homogeneous&lt;decltype(x)...&gt;</code></pre></blockquote>
+
 <h2 id="part2">Part 2: Relaxed &ldquo;constrained <code>auto</code>&rdquo;</h2>
 
 <p>
