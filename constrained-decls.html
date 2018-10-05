@@ -489,37 +489,37 @@ template&lt;C5... Cs&gt; void f6();   // OK, Cs is a template parameter pack of 
 <p>
   This seems to be doing an unexpected thing, i.e. have the constraint
   apply to more than one type in a pack at a time. We propose that
-  <ul>
-    <li>For a simple pack of constrained types, the concept
-      mentioned is applied to each type in the pack in turn,
-    as a unary concept.</li>
-    <li>For a pack of constrained types that use partial-concept-identifiers,
-      the concept
-      mentioned is applied to each type in the pack in turn,
-      as a binary or more-nary concept, but applied to just one
-      type in the pack in turn.</li>
-  </ul>
 </p>
+<ul>
+  <li>For a simple pack of constrained types, the concept
+    mentioned is applied to each type in the pack in turn,
+  as a unary concept.</li>
+  <li>For a pack of constrained types that use partial-concept-identifiers,
+    the concept
+    mentioned is applied to each type in the pack in turn,
+    as a binary or more-nary concept, but applied to just one
+    type in the pack in turn.</li>
+</ul>
 <p>
   In other words,
-  <ul>
-    <li><code>template &lt;ConceptName... T&gt; void f(T...);</code>
-      means a variadic function template where each type in the pack
-      <code>T</code> needs to satisfy ConceptName as a unary Concept, applied
-      as <code>ConceptName&lt;T<sub>n</sub>&gt;</code>.</li>
-    <li>Similarly, <code>void f(ConceptName auto... T);</code>
-      means exactly the same thing.</li>
-    <li><code>template &lt;ConceptName&lt;T&gt;... U&gt; void f(U...);</code>
-      means a variadic function template where each type in the pack
-      <code>U</code> needs to satisfy <code>ConceptName</code> as a binary Concept, applied
-      as <code>ConceptName&lt;U<sub>n</sub>, T&gt;</code>.</li>
-    <li>Similarly, <code>void f(ConceptName&lt;T&gt; auto... U);</code>
-      means exactly the same thing.</li>
-    <li><code>template &lt;ConceptName&lt;T, V, W&gt;... U&gt; void f(U...);</code>
-      means a variadic function template where each type in the pack
-      <code>U</code> needs to satisfy <code>ConceptName</code> as a n-ary Concept, applied
-      as <code>ConceptName&lt;U<sub>n</sub>, T, V, W&gt;</code>.</li>
-  </ul>
 </p>
+<ul>
+  <li><code>template &lt;ConceptName... T&gt; void f(T...);</code>
+    means a variadic function template where each type in the pack
+    <code>T</code> needs to satisfy ConceptName as a unary Concept, applied
+    as <code>ConceptName&lt;T<sub>n</sub>&gt;</code>.</li>
+  <li>Similarly, <code>void f(ConceptName auto... T);</code>
+    means exactly the same thing.</li>
+  <li><code>template &lt;ConceptName&lt;T&gt;... U&gt; void f(U...);</code>
+    means a variadic function template where each type in the pack
+    <code>U</code> needs to satisfy <code>ConceptName</code> as a binary Concept, applied
+    as <code>ConceptName&lt;U<sub>n</sub>, T&gt;</code>.</li>
+  <li>Similarly, <code>void f(ConceptName&lt;T&gt; auto... U);</code>
+    means exactly the same thing.</li>
+  <li><code>template &lt;ConceptName&lt;T, V, W&gt;... U&gt; void f(U...);</code>
+    means a variadic function template where each type in the pack
+    <code>U</code> needs to satisfy <code>ConceptName</code> as a n-ary Concept, applied
+    as <code>ConceptName&lt;U<sub>n</sub>, T, V, W&gt;</code>.</li>
+</ul>
 </body>
 </html>
