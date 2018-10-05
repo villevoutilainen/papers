@@ -487,18 +487,15 @@ template&lt;C5... Cs&gt; void f6();   // OK, Cs is a template parameter pack of 
 <blockquote class="std"><pre><code>template&lt;C2... T&gt; struct s3; // associates C2&lt;T...&gt;
 </code></pre></blockquote>
 <p>
-  This seems to be doing an unexpected thing, i.e. have the constraint
-  apply to more than one type in a pack at a time. We propose that
+  This seems to be doing an unexpected thing, which is having the constraint
+  apply to more than one type in a pack at a time. We propose that, regardless of whether the prototype parameter of the named concept is a pack:
 </p>
 <ul>
   <li>For a simple pack of constrained types, the concept
-    mentioned is applied to each type in the pack in turn,
-  as a unary concept.</li>
-  <li>For a pack of constrained types that use partial-concept-identifiers,
+    mentioned is applied, as a unary concept, to each type in the pack in turn.</li>
+  <li>For a pack of constrained types that use <i>partial-concept-id</i>s,
     the concept
-    mentioned is applied to each type in the pack in turn,
-    as a binary or more-nary concept, but applied to just one
-    type in the pack in turn.</li>
+    mentioned is applied, as an n-ary concept whose arity is unaffected by the size of the pack, <i>individually</i> to each type in the pack in turn.</li>
 </ul>
 <p>
   In other words,
