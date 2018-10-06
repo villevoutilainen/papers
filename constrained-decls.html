@@ -71,6 +71,7 @@ Document number: D1141R1
   <li><a href="#part2">Part 2: Relaxed &ldquo;constrained <code>auto</code>&rdquo;</a></li>
   <li><a href="#part3">Part 3: Meaning of &ldquo;<code>template &lt;Concept T&gt;</code>&rdquo;</a></li>
   <li><a href="#part4">Part 4: Meaning of &ldquo;<code>template &lt;Concept... T&gt;</code>&rdquo; and its friends</a></li>
+  <li><a href="#part5">Part 5: Meaning of &ldquo;<code>-&gt; Concept auto</code>&rdquo; and its friends</a></li>
 </ol>
 
 <h2 id="revisions">Revision history</h2>
@@ -330,8 +331,11 @@ template &lt;Constructible&lt;int&gt; auto N&gt; void f();</code></pre></blockqu
 
 <p>
   Trailing return types are also used for <i>return-type-requirement</i>s; however, <code>auto</code> does not (currently) go in such a context, whereas constraints <em>do</em>.
-  A minimal change we can make as part of this proposal is to allow <code>auto</code> as being implicitly modified by a least constrained concept where a constraint is currently allowed in a <i>return-type-requirement</i>.
+  A minimal change we can make as part of this proposal is to take <code>auto</code> as being implicitly modified by a least constrained concept where a constraint is currently allowed in a <i>return-type-requirement</i>.
   At the same time, <code>Constraint auto</code> would also be allowed. Thus, a plain <code>Constraint</code> in such a position can be seen as a case of relaxed &ldquo;constrained <code>auto</code>&rdquo;.
+  The interaction with
+  <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p1084r0.pdf">P1084R0 Today&rsquo;s <i>return-type-requirement</i>s Are Insufficient</a>
+  is discussed later in this paper.
 </p>
 <p>For example:</p>
 <blockquote><pre><code>requires(T t) {
@@ -523,5 +527,43 @@ template&lt;C5... Cs&gt; void f6();   // OK, Cs is a template parameter pack of 
     <code>U</code> needs to satisfy <code>ConceptName</code> as a n-ary concept, applied
     as <code>ConceptName&lt;U<sub>n</sub>, 0u, void, wchar_t&gt;</code>.</li>
 </ul>
+
+<h2 id="part5">Part 5: Meaning of &ldquo;<code>-&gt; Concept auto</code>&rdquo; and its friends</h2>
+
+<p>
+  <code>Constraint auto</code>, by virtue of being allowed where <code>auto</code> may appear, may now appear (at least syntactically) in a
+  trailing return type. Following the general rule that we deduce like <code>auto</code> (and additionally check the constraint),
+  a meaning is given for &ldquo;<code>-&gt; Concept auto</code>&rdquo; when it appears as the trailing return type in a function definition.
+  The meaning being that we get plain return type deduction (as with <code>auto</code>) plus a check of the constraint.
+</p>
+<p>
+  In <a href="#part2">Part 2</a>, we note that trailing return types are also used for <i>return-type-requirement</i>s
+  and we propose for a meaning to be given for use of plain <code>auto</code> in such a context. Further building along that direction, the form of
+  <i>return-type-requirement</i> involving a concept to be satisfied becomes merely a generalization of
+  <i>trailing-return-type</i>s with placeholder types. The deduction as described in Part 2 is based on the status quo of the post-Rapperswil working
+  draft, and it is similar to that of the TS and to the deduction that occurs for return type deduction.
+</p>
+<p>
+  P1084R0 explains that the existing deduction rules associated with <i>return-type-requirement</i>s is lacking in terms of expressing certain desired
+  semantics. As a solution, it proposed making <code>-&gt; Constraint</code> more of a special case in the context of a
+  <i>return-type-requirement</i>. Expressed in terms of deduction, the semantics proposed by P1084R0 is more akin to deduction for a theoretical
+  <code>decltype((auto))</code> than to deduction for <code>auto</code>. Which is to say that the semantics for
+</p>
+<blockquote><pre><code>-&gt; Constraint</code></pre></blockquote>
+<p>
+  as proposed in P1084R0 is incongruous with how we would describe the semantics of
+</p>
+<blockquote><pre><code>-&gt; Constraint auto</code></pre></blockquote>
+<p>
+   in the context of this paper.
+</p>
+<p>
+  This paper does introduce a solution for expressing the semantics requested in P1084R0.
+  <code>{(E)} -&gt; Constraint decltype(auto);</code>
+  produces the effect that P1084R0 requests for
+  <code>{E} -&gt; Constraint;</code>,
+  namely that <code>Constraint</code> is applied with <code>decltype((E))</code>
+  as the argument to its prototype parameter.
+</p>
 </body>
 </html>
