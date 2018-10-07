@@ -558,12 +558,18 @@ template&lt;C5... Cs&gt; void f6();   // OK, Cs is a template parameter pack of 
    in the context of this paper.
 </p>
 <p>
-  This paper does introduce a solution for expressing the semantics requested in P1084R0.
+  This paper raises the possibility of expressing the semantics requested in P1084R0 in a different manner.
   <code>{(E)} -&gt; Constraint decltype(auto);</code>
   produces the effect that P1084R0 requests for
-  <code>{E} -&gt; Constraint;</code>,
-  namely that <code>Constraint</code> is applied with <code>decltype((E))</code>
+  <code>{E} -&gt; Constraint;</code>
+  in terms of applying <code>Constraint</code> with <code>decltype((E))</code>
   as the argument to its prototype parameter.
+  There is a further consideration as to whether convertibility, as opposed to type identity, should be enforced; in particular,
+  P1084R0 leaves the possibility that
+  <code>{A()} -&gt; std::Same&lt;A&gt;</code>
+  would be satisfied, but
+  <code>{A()} -&gt; A</code>
+  would not be.
 </p>
 </body>
 </html>
