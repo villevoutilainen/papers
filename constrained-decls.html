@@ -49,7 +49,7 @@ Document number: D1141R1
 <a href="mailto:tom@honermann.net">Tom Honermann</a><br/>
 <a href="mailto:erich.keane@intel.com">Erich Keane</a><br/>
 <a href="mailto:webrown.cpp@gmail.com">Walter E. Brown</a><br/>
-2018-10-03<br/>
+2018-10-05<br/>
 </address>
 <hr/>
 <h1 style="text-align: center;">Yet another approach for constrained declarations</h1>
@@ -75,7 +75,12 @@ Document number: D1141R1
 
 <h2 id="revisions">Revision history</h2>
 <ul>
-  <li>This document: Initial proposal.</li>
+  <li>This document:
+    <ul>
+      <li>Added discussion in Part 4 on variadic concepts.</li>
+    </ul>
+  </li>
+  <li>P1141R0: Initial proposal.</li>
 </ul>
 
 <h2 id="summary">Proposal summary</h2>
@@ -487,39 +492,36 @@ template&lt;C5... Cs&gt; void f6();   // OK, Cs is a template parameter pack of 
 <blockquote class="std"><pre><code>template&lt;C2... T&gt; struct s3; // associates C2&lt;T...&gt;
 </code></pre></blockquote>
 <p>
-  This seems to be doing an unexpected thing, i.e. have the constraint
-  apply to more than one type in a pack at a time. We propose that
-  <ul>
-    <li>For a simple pack of constrained types, the concept
-      mentioned is applied to each type in the pack in turn,
-    as a unary concept.</li>
-    <li>For a pack of constrained types that use partial-concept-identifiers,
-      the concept
-      mentioned is applied to each type in the pack in turn,
-      as a binary or more-nary concept, but applied to just one
-      type in the pack in turn.</li>
-  </ul>
+  This seems to be doing an unexpected thing, which is having the constraint
+  apply to more than one type in a pack at a time. We propose that, regardless of whether the prototype parameter of the named concept is a pack:
 </p>
+<ul>
+  <li>For a simple pack of constrained types, the concept
+    mentioned is applied, as a unary concept, to each type in the pack in turn.</li>
+  <li>For a pack of constrained types that use <i>partial-concept-id</i>s,
+    the concept
+    mentioned is applied, as an n-ary concept whose arity is unaffected by the size of the pack, <i>individually</i> to each type in the pack in turn.</li>
+</ul>
 <p>
   In other words,
-  <ul>
-    <li><code>template &lt;ConceptName... T&gt; void f(T...);</code>
-      means a variadic function template where each type in the pack
-      <code>T</code> needs to satisfy ConceptName as a unary Concept, applied
-      as <code>ConceptName&lt;T<sub>n</sub>&gt;</code>.</li>
-    <li>Similarly, <code>void f(ConceptName auto... T);</code>
-      means exactly the same thing.</li>
-    <li><code>template &lt;ConceptName&lt;T&gt;... U&gt; void f(U...);</code>
-      means a variadic function template where each type in the pack
-      <code>U</code> needs to satisfy <code>ConceptName</code> as a binary Concept, applied
-      as <code>ConceptName&lt;U<sub>n</sub>, T&gt;</code>.</li>
-    <li>Similarly, <code>void f(ConceptName&lt;T&gt; auto... U);</code>
-      means exactly the same thing.</li>
-    <li><code>template &lt;ConceptName&lt;T, V, W&gt;... U&gt; void f(U...);</code>
-      means a variadic function template where each type in the pack
-      <code>U</code> needs to satisfy <code>ConceptName</code> as a n-ary Concept, applied
-      as <code>ConceptName&lt;U<sub>n</sub>, T, V, W&gt;</code>.</li>
-  </ul>
 </p>
+<ul>
+  <li><code>template &lt;ConceptName... T&gt; void f(T...);</code>
+    means a variadic function template where each type in the pack
+    <code>T</code> needs to satisfy <code>ConceptName</code> as a unary concept, applied
+    as <code>ConceptName&lt;T<sub>n</sub>&gt;</code>.</li>
+  <li>Similarly, <code>void f(ConceptName auto... T);</code>
+    means exactly the same thing.</li>
+  <li><code>template &lt;ConceptName&lt;int&gt;... U&gt; void f(U...);</code>
+    means a variadic function template where each type in the pack
+    <code>U</code> needs to satisfy <code>ConceptName</code> as a binary concept, applied
+    as <code>ConceptName&lt;U<sub>n</sub>, int&gt;</code>.</li>
+  <li>Similarly, <code>void f(ConceptName&lt;int&gt; auto... U);</code>
+    means exactly the same thing.</li>
+  <li><code>template &lt;ConceptName&lt;0u, void, wchar_t&gt;... U&gt; void f(U...);</code>
+    means a variadic function template where each type in the pack
+    <code>U</code> needs to satisfy <code>ConceptName</code> as a n-ary concept, applied
+    as <code>ConceptName&lt;U<sub>n</sub>, 0u, void, wchar_t&gt;</code>.</li>
+</ul>
 </body>
 </html>
