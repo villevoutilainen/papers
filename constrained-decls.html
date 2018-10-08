@@ -662,5 +662,80 @@ template&lt;C5... Cs&gt; void f6();   // OK, Cs is a template parameter pack of 
   is also an option. P1084 proposes a generalization of a same-type constraint, applying a change only to the placeholder case;
   this latter option is an application of a generalized same-type constraint on the non-placeholder case (as well as to placeholder cases that P1084 drops).
 </p>
+<p>
+  For a parenthesized lvalue of type <code>int</code>, the following table describes the value category-aware type identity check:
+</p>
+<table class="table">
+  <thead>
+  <tr>
+    <td></td>
+    <th>Type deduced/passed to prototype parameter</th>
+    <th>Type to match</th>
+    <th>Type matches</th>
+  </tr>
+  </thead>
+  <tbody>
+  <tr>
+    <th><code>auto</code></th>
+    <td><code>int</code></td>
+    <td><code>int</code></td>
+    <td>no</td>
+  </tr>
+  <tr>
+    <th><code>C</code></th>
+    <td><code>int</code></td>
+    <td><code>int</code></td>
+    <td>no</td>
+  </tr>
+  <tr>
+    <th><code>C&amp;</code></th>
+    <td><code>int</code></td>
+    <td><code>int&amp;</code></td>
+    <td>yes</td>
+  </tr>
+  <tr>
+    <th><code>C&amp;&amp;</code> (forwarding reference)</th>
+    <td><code>int&amp;</code></td>
+    <td><code>int&amp;</code></td>
+    <td>yes</td>
+  </tr>
+  <tr>
+    <th><code>C decltype(auto)</code></th>
+    <td><code>int&amp;</code></td>
+    <td><code>int&amp;</code></td>
+    <td>yes</td>
+  </tr>
+  <tr>
+    <th><code>const C&amp;</code></th>
+    <td><code>int</code></td>
+    <th><code>const int&amp;</code></th>
+    <td>no</td>
+  </tr>
+  <tr>
+    <th><code>int</code></th>
+    <td>N/A</td>
+    <th><code>int</code></th>
+    <td>no</td>
+  </tr>
+  <tr>
+    <th><code>int&amp;</code></th>
+    <td>N/A</td>
+    <th><code>int&amp;</code></th>
+    <td>yes</td>
+  </tr>
+  <tr>
+    <th><code>int&amp;&amp;</code></th>
+    <td>N/A</td>
+    <th><code>int&amp;&amp;</code></th>
+    <td>no</td>
+  </tr>
+  </tbody>
+</table>
+<p>
+  In brief, <code>auto</code> means &ldquo;is a prvalue&rdquo;,
+  <code>const C&amp;</code> means &ldquo;is an lvalue of <code>const T</code> requiring <code>C&lt;T&gt;</code>&rdquo;,
+  <code>int&amp;&amp;</code> means &ldquo;is an <code>int</code> xvalue&rdquo;, and
+  <code>C decltype(auto)</code> has the semantics requested in P1084 for all parenthesized expressions.
+</p>
 </body>
 </html>
