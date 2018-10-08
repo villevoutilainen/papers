@@ -28,6 +28,16 @@
 	ins {color:#00A000}
 	del {color:#A00000}
         p > code, li > code {color: #000080;}
+
+	table { border: 1px solid black; border-spacing: 0px;
+	  margin-left: auto; margin-right: auto; }
+	th { text-align: left; vertical-align: top;
+	  padding-left: 0.8em; border: none; }
+	td { text-align: left; vertical-align: top;
+	  padding-left: 0.8em; border: none; }
+
+	table.table { border-spacing: 2px; border-collapse: separate; }
+	.table * th, .table * td { border: 1px solid black; }
 	</style>
 </head>
 <body>
@@ -570,6 +580,86 @@ template&lt;C5... Cs&gt; void f6();   // OK, Cs is a template parameter pack of 
   would be satisfied, but
   <code>{A()} -&gt; A</code>
   would not be.
+</p>
+<p>
+  Three different kinds of convertibility requirement have been applied in the various iterations of <i>return-type-requirement</i> thus far.
+  With
+  WD signifying <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/n4762.pdf">N4762</a>,
+  TS signifying <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2017/n4674.pdf">N4674</a>,
+  and <code>return</code> representing return type deduction (whether under the TS or under this proposal);
+  the table below summarizes:
+</p>
+<table class="table">
+  <colgroup span="1"></colgroup>
+  <colgroup span="4"></colgroup>
+  <colgroup span="4"></colgroup>
+  <thead>
+  <tr>
+    <td></td>
+    <th colspan="4" scope="colgroup">Concrete type</th>
+    <th colspan="4" scope="colgroup">Placeholder type</th>
+  </tr>
+  </thead>
+  <tbody>
+  <tr>
+    <td></td>
+    <th scope="col">WD</th>
+    <th scope="col">TS</th>
+    <th scope="col"><code>return</code></th>
+    <th scope="col">P1084</th>
+    <th scope="col">WD</th>
+    <th scope="col">TS</th>
+    <th scope="col"><code>return</code></th>
+    <th scope="col">P1084</th>
+  </tr>
+  <tr>
+    <th scope="row">Deduction only</th>
+    <td></td>
+    <td></td>
+    <td></td>
+    <td></td>
+    <td>X</td>
+    <td></td>
+    <td></td>
+    <td>X</td>
+  </tr>
+  <tr>
+    <th scope="row">Implicit conversion sequence</th>
+    <td></td>
+    <td></td>
+    <td></td>
+    <td></td>
+    <td></td>
+    <td>X</td>
+    <td></td>
+    <td></td>
+  </tr>
+  <tr>
+    <th scope="row">Well-formed copy initialization</th>
+    <td>X</td>
+    <td>X</td>
+    <td>X</td>
+    <td>X</td>
+    <td></td>
+    <td></td>
+    <td>X</td>
+    <td></td>
+  </tr>
+  </tbody>
+</table>
+<p>
+  The deduction-only situation with the WD may well be a wording defect, since <code>{0} -&gt; std::Same&lt;int&gt;&amp;</code> would surprisingly not fail.
+  Similarly, for the TS, the difference between requiring an implicit conversion sequence and requiring a well-formed copy initialization is somewhat subtle.
+  Nevertheless, the treatment for concrete types differ from that of types involving placeholders for every iteration of <i>return-type-requirement</i> thus far
+  (given that return type deduction is present for comparison only). This seems undesirable.
+</p>
+<p>
+  The WD situation shows that some sort of requirement would be needed since deduction is not sufficient.
+  A convertibility requirement is an option; however, P1084 does not impose a convertibility requirement for the placeholder case.
+  Under P1084, the placeholder case would trivially pass a value category-aware type identity check.
+  Requiring such a check of <code>decltype((E))</code> being the same as the type in the <i>return-type-requirement</i> (after substitution of the deduced placeholders, if any)
+  is also an option. P1084 proposes a generalization of a same-type constraint, applying a change only to the placeholder case;
+  this latter option is an application of a generalized same-type constraint on the non-placeholder case (as well as to placeholder cases that P1084 drops).
 </p>
 </body>
 </html>
