@@ -1,5 +1,4 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
-        "http://www.w3.org/TR/html4/loose.dtd">
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
 <html>
 <head>
 	<title>Yet another approach for constrained declarations</title>
@@ -8,7 +7,7 @@
         html {font-family: "DejaVu Serif", serif; size: medium; line-height: 150%; margin: 0; padding: 0;}
         code {font-family: "DejaVu Sans Mono", monospace; size: medium; line-height: 135%;}
         body {margin: 1em 2em; padding: 0;}
-        h2 {margin: 1.5em 0 1em 0;}
+        h2, h3, h4 {margin: 1.5em 0 1em 0;}
 	p, li {text-align:justify}
 	ol.wide li {margin-top:1em;}
 	blockquote.note
@@ -25,6 +24,19 @@
                 border-left: thick solid #AAA;
                 padding-left: 1em;
         }
+        blockquote.stdins
+        {
+                max-width: 55em;
+                border-left: thick solid #00A000;
+                padding-left: 1em;
+        }
+        blockquote.stddel
+        {
+                max-width: 55em;
+                border-left: thick solid #A00000;
+                padding-left: 1em;
+        }
+        blockquote.stdins * { color: #00A000; text-decoration: underline; }
 	ins {color:#00A000}
 	del {color:#A00000}
         p > code, li > code {color: #000080;}
@@ -38,12 +50,26 @@
 
 	table.table { border-spacing: 2px; border-collapse: separate; }
 	.table * th, .table * td { border: 1px solid black; }
+
+        /* ul[del] is a list with deleted bullets */
+        ul.del li {
+          list-style-type: none;
+          list-style-position: outside;
+          text-indent: -1ex;
+        }
+        ul.del li:before {
+          display: inline-block;
+          content: "\2022";
+          color: #A00000;
+          text-decoration: line-through;
+          width: 1ex;
+        }
 	</style>
 </head>
 <body>
 
 <address style="text-align:right;">
-Document number: D1141R1
+Document number: P1141R2
 <br/>
 <br/>
 <a href="mailto:ville.voutilainen@gmail.com">Ville Voutilainen</a><br/>
@@ -60,9 +86,12 @@ Document number: D1141R1
 <a href="mailto:erich.keane@intel.com">Erich Keane</a><br/>
 <a href="mailto:webrown.cpp@gmail.com">Walter E. Brown</a><br/>
 <a href="mailto:mike_spertus@symantec.com">Michael Spertus</a><br/>
-2018-10-08<br/>
+<a href="mailto:richard@metafoo.co.uk">Richard Smith</a><br/>
+2018-11-09<br/>
 </address>
-<hr/>
+
+<hr>
+
 <h1 style="text-align: center;">Yet another approach for constrained declarations</h1>
 
 <h2>Abstract</h2>
@@ -78,22 +107,33 @@ Document number: D1141R1
 <ol>
   <li><a href="#revisions">Revision history</a></li>
   <li><a href="#summary">Proposal summary</a></li>
-  <li><a href="#part1">Part 1: &ldquo;Constrained <code>auto</code>&rdquo;</a></li>
-  <li><a href="#part2">Part 2: Relaxed &ldquo;constrained <code>auto</code>&rdquo;</a></li>
-  <li><a href="#part3">Part 3: Meaning of &ldquo;<code>template &lt;Concept T&gt;</code>&rdquo;</a></li>
-  <li><a href="#part4">Part 4: Meaning of &ldquo;<code>template &lt;Concept... T&gt;</code>&rdquo; and its friends</a></li>
-  <li><a href="#part5">Part 5: Meaning of &ldquo;<code>-&gt; Concept auto</code>&rdquo; and its friends</a></li>
+  <li><a href="#proposal">Proposal details</a>
+      <ul>
+        <li><a href="#part1">Part 1: &ldquo;Constrained <code>auto</code>&rdquo;</a></li>
+        <li><a href="#part2">Part 2: Relaxed &ldquo;constrained <code>auto</code>&rdquo;</a> [not proposed]</li>
+        <li><a href="#part3">Part 3: Meaning of &ldquo;<code>template &lt;Concept T&gt;</code>&rdquo;</a></li>
+        <li><a href="#part4">Part 4: Meaning of &ldquo;<code>template &lt;Concept... T&gt;</code>&rdquo; and its friends</a></li>
+        <li><a href="#part5">Part 5: Meaning of &ldquo;<code>-&gt; Concept auto</code>&rdquo; and its friends</a> [not proposed]</li>
+      </ul>
+  </li>
+  <li><a href="#wording">Proposed wording for Parts 1, 3, and 4</a>
+      <ul>
+        <li><a href="#wordingexpr">Changes in [expr]</a></li>
+        <li><a href="#wordingdcl">Changes in [dcl]</a></li>
+        <li><a href="#wordingtemp">Changes in [temp]</a></li>
+      </ul>
+  </li>
 </ol>
 
 <h2 id="revisions">Revision history</h2>
 <ul>
-  <li>This document:
-    <ul>
-      <li>Added discussion in Part 4 on variadic concepts.</li>
-      <li>Added discussion in Parts 2 and 5 on <i>return-type-requirement</i>s.</li>
-    </ul>
+  <li>P1141R2 (this document):
+    Added formal wording for parts 1, 3, and 4. Parts 2 and 5 are not being proposed.</li>
+  <li><a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p1141r1.html">P1141R1</a>:
+    Added discussion in Parts 2 and 5 on <i>return-type-requirement</i>s and in Part 4 on variadic concepts.
   </li>
-  <li>P1141R0: Initial proposal.</li>
+  <li><a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p1141r0.html">P1141R0</a>:
+    Initial proposal.</li>
 </ul>
 
 <h2 id="summary">Proposal summary</h2>
@@ -123,11 +163,6 @@ template &lt;Sortable auto N&gt; void f();</code></pre></blockquote>
     So, this proposal includes <code>auto</code>-typed parameters for
     functions, which we already allow for lambdas.</li>
 
-  <li>An additional relaxation where the <code>auto</code> is optional
-    for the cases #1 and #2 illustrated above:
-    <blockquote><pre><code>Sortable f();
-Sortable x = f();</code></pre></blockquote></li>
-
   <li>Simplifying (and thus restricting) the rules in
     <a href="https://wg21.link/temp.param#10">[temp.param]/10</a>,
     so that <code>template &lt;Sortable S&gt;</code> always
@@ -138,6 +173,10 @@ Sortable x = f();</code></pre></blockquote></li>
     is restricted to be a concept that takes a type parameter or type parameter pack;
     non-type and template concepts are no longer supported in this short form.
   </li>
+
+  <li>Changing the meaning of parameter packs, so that <code>template &lt;Sortable ...T&gt;</code>
+    means <code>requires Sortable&lt;T&gt; &amp;&amp; ... &amp;&amp; true</code>, and not
+    <code>requires Sortable&lt;T...&gt;</code>.</li>
 </ol>
 
 <p><code>Sortable</code> is a &ldquo;type concept&rdquo; in all the examples of this summary.</p>
@@ -176,7 +215,16 @@ Sortable x = f();</code></pre></blockquote></li>
   </li>
 </ul>
 
-<h2 id="part1">Part 1: &ldquo;Constrained <code>auto</code>&rdquo;</h2>
+<p>The previous revision of this paper
+  (<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p1141r1.html">P1141R1</a>)
+  also proposed (in Part 2) an optional relaxation where the <code>auto</code>
+  would be optional for the cases #1 and #2 illustrated above, and (in Part 5) a
+  change of the meaning of <code>-&gt; Concept auto</code>. However, EWG decided
+  to propose only parts 1, 3, and 4.</p>
+
+<h2 id="proposal">Proposal details</h2>
+
+<h3 id="part1">Part 1: &ldquo;Constrained <code>auto</code>&rdquo;</h3>
 
 <p>
   The approach proposed here borrows a subset of
@@ -186,7 +234,7 @@ Sortable x = f();</code></pre></blockquote></li>
   to introduce a type name.
 </p>
 
-<h3>Function templates</h3>
+<h4>Function templates</h4>
 
 <p>
   The approach is simple: allow <code>auto</code> parameters to produce
@@ -211,7 +259,7 @@ void f3(Constraint auto&amp;&amp; a, SomethingElse&amp;&amp; b) {...}; // a cons
   concepts from types: concepts precede <code>auto</code>, types do not.
 </p>
 
-<h3>Return types and variable declarations</h3>
+<h4>Return types and variable declarations</h4>
 
 <p>
   Constrained return types work the same way:
@@ -254,7 +302,7 @@ Whatever x3 = f3();         // See part 2. If Whatever is a type, not deduced.
   (including auto concepts) are not allowed in this form.
 </p>
 
-<h3>Other uses of <code>auto</code></h3>
+<h4>Other uses of <code>auto</code></h4>
 
 <p>
   In concert with the general approach that &ldquo;<code>Constraint auto</code> goes wherever
@@ -281,7 +329,7 @@ Constraint decltype(auto) x = f();</code></pre></blockquote>
   Therefore, we propose to defer enabling the application of constraints to structured bindings to separate papers.
 </p>
 
-<h3>General rules</h3>
+<h4>General rules</h4>
 
 <p>
   The constraint applies directly to the deduced type. It does not apply to the possibly cv-qualified
@@ -318,87 +366,9 @@ Constructible&lt;int&gt; auto x = f();
 
 template &lt;Constructible&lt;int&gt; auto N&gt; void f();</code></pre></blockquote>
 
-<h2 id="part2">Part 2: Relaxed &ldquo;constrained <code>auto</code>&rdquo;</h2>
+<h3 id="part2" style="color: #666"><span style="text-decoration: line-through">Part 2: Relaxed &ldquo;constrained <code>auto</code>&rdquo;</span> [not proposed]</h3>
 
-<p>
-  In the return type of a function declaration, we can leave out the <code>auto</code>.
-  So, in addition to
-</p>
-<blockquote><pre><code>Constraint auto f1();</code></pre></blockquote>
-<p>
-  we can write
-</p>
-<blockquote><pre><code>Constraint f2();</code></pre></blockquote>
-<p>
-  Neither <code>f1</code> nor <code>f2</code> are templates.
-  It seems fairly reasonable to allow omitting the <code>auto</code>,
-  but that is intended to be a relaxation of the general rule,
-  not a replacement for <code>Constraint auto</code>.
-</p>
-
-<p>
-  Trailing return types in function declarations behave the same way:
-</p>
-<blockquote><pre><code>auto f1() -&gt; Constraint; // okay</code></pre></blockquote>
-
-<p>
-  Trailing return types are also used for <i>return-type-requirement</i>s; however, <code>auto</code> does not (currently) go in such a context, whereas constraints <em>do</em>.
-  A minimal change we can make as part of this proposal is to take <code>auto</code> as being implicitly modified by a least constrained concept where a constraint is currently allowed in a <i>return-type-requirement</i>.
-  At the same time, <code>Constraint auto</code> would also be allowed. Thus, a plain <code>Constraint</code> in such a position can be seen as a case of relaxed &ldquo;constrained <code>auto</code>&rdquo;.
-  The interaction with
-  <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p1084r0.pdf">P1084R0 Today&rsquo;s <i>return-type-requirement</i>s Are Insufficient</a>
-  is discussed later in this paper.
-</p>
-<p>For example:</p>
-<blockquote><pre><code>requires(T t) {
-  {t} -&gt; const auto*; // t needs to be a pointer to const
-}
-
-requires(T t) {
-  {t} -&gt; Constraint auto; // t needs to be of a type that satisfies Constraint
-}</code></pre></blockquote>
-
-<p>
-  In variable declarations, omitting the <code>auto</code>
-  also seems reasonable:
-</p>
-<blockquote><pre><code>Constraint x = f2();</code></pre></blockquote>
-<p>
-  Note, in particular, that we already have a syntax that
-  does (partial) deduction but doesn&rsquo;t make that explicit in the syntax:
-</p>
-<blockquote><pre><code>std::tuple x = foo();</code></pre></blockquote>
-<p>
-  The variable case in particular seems reasonable, considering
-  the already existing deduction syntaxes that don&rsquo;t call
-  attention to deduction. The user always has a choice to use
-  a more explicit syntax. The return type case might well have
-  a weaker rationale for being allowed. It should be noted, though,
-  that this relaxation in general was present in the TS; this
-  paper is merely not proposing it for parameters.
-</p>
-<p>
-  Certain disambiguation details need to be handled:
-</p>
-<blockquote><pre><code>bool b(Constructible&lt;int&gt; &amp;&amp; bar());         // variable definition
-
-void foo() {
-    Constructible&lt;int&gt; * f2();               // disambiguation/type-name interpretation rule required
-    Constructible&lt;int&gt; * selector = f2();    // (same?) disambiguation/type-name interpretation rule required
-}</code></pre></blockquote>
-<p>
-  Note that the variable definition is unambiguously a variable
-  definition. This proposal proposes no function declaration
-  syntax that would clash with it; in particular, <code>Constructible&lt;int&gt;</code>
-  is not considered a <i>type-name</i> that is short for <code>Constructible&lt;int&gt; auto</code>
-  except in limited contexts. It&rsquo;s merely something to be aware of, and a demonstration of how
-  the presence of <code>auto</code> avoids ambiguity. For each remaining case above,
-  <code>Constructible&lt;int&gt;</code> <em>does</em> appear within such a limited context when parsing
-  the statements as prospective declaration statements; we propose to generalize the rule for disambiguating
-  in favor of declaration statements to cover this case.
-</p>
-
-<h2 id="part3">Part 3: Meaning of &ldquo;<code>template &lt;Concept T&gt;</code>&rdquo;</h2>
+<h3 id="part3">Part 3: Meaning of &ldquo;<code>template &lt;Concept T&gt;</code>&rdquo;</h3>
 
 <p>
   In <a href="https://wg21.link/temp.param#10">[temp.param]/10</a> we have:
@@ -406,7 +376,7 @@ void foo() {
 <blockquote class="std">
 <p>
   A <i>constrained-parameter</i> declares a template parameter whose kind (type, non-type, template) and type
-  match that of the prototype parameter (17.6.8) of the concept designated by the <i>qualified-concept-name</i>
+  match that of the prototype parameter (17.6.8) of the concept designated by the <i>type-constraint</i>
   in the <i>constrained-parameter</i>. Let <code>X</code> be the prototype parameter of the designated concept.
   The declared template parameter is determined by the kind of <code>X</code> (type, non-type, template)
   and the optional ellipsis in the <i>constrained-parameter</i> as follows.
@@ -421,7 +391,7 @@ void foo() {
     the declared parameter is a template <i>template-parameter</i>
     having the same <i>template-parameter-list</i> as <code>X</code>,
     excluding default template arguments.</li>
-  <li>If the <i>qualified-concept-name</i> is followed by an ellipsis,
+  <li>If the <i>type-constraint</i> is followed by an ellipsis,
     then the declared parameter is a template parameter pack (17.6.3).</li>
 </ul>
 <p>
@@ -500,7 +470,7 @@ template&lt;C5... Cs&gt; void f6();   // OK, Cs is a template parameter pack of 
   Other use cases can be done with <i>requires-clause</i>s.
 </p>
 
-<h2 id="part4">Part 4: Meaning of &ldquo;<code>template &lt;Concept... T&gt;</code>&rdquo; and its friends</h2>
+<h3 id="part4">Part 4: Meaning of &ldquo;<code>template &lt;Concept... T&gt;</code>&rdquo; and its friends</h3>
 
 <p>
   In <a href="https://wg21.link/temp.param#11">[temp.param]/11</a> we have:
@@ -540,203 +510,638 @@ template&lt;C5... Cs&gt; void f6();   // OK, Cs is a template parameter pack of 
     as <code>ConceptName&lt;U<sub>n</sub>, 0u, void, wchar_t&gt;</code>.</li>
 </ul>
 
-<h2 id="part5">Part 5: Meaning of &ldquo;<code>-&gt; Concept auto</code>&rdquo; and its friends</h2>
+<h3 id="part5" style="color: #666"><span style="text-decoration: line-through">Part 5: Meaning
+    of &ldquo;<code>-&gt; Concept auto</code>&rdquo; and its friends</span> [not proposed]</h3>
+
+<h2 id="wording">Proposed wording for Parts 1, 3, and 4</h2>
+
+<h3 id="wordingexpr">Changes in [expr]</h3>
 
 <p>
-  <code>Constraint auto</code>, by virtue of being allowed where <code>auto</code> may appear, may now appear (at least syntactically) in a
-  trailing return type. Following the general rule that we deduce like <code>auto</code> (and additionally check the constraint),
-  a meaning is given for &ldquo;<code>-&gt; Concept auto</code>&rdquo; when it appears as the trailing return type in a function definition.
-  The meaning being that we get plain return type deduction (as with <code>auto</code>) plus a check of the constraint.
+  Update [expr.prim.lambda, 7.5.5], paragraph 5, to allow
+  placeholder type specifiers as lambda parameters.
 </p>
+
+<blockquote class="std">
+  <p>A lambda is a generic lambda if
+  <del>the <code>auto</code> <i>type-specifier</i> appears as one of the
+  <i>decl-specifier</i>s</del><ins>there is a <i>decl-specifier</i> that is a <i>placeholder-type-specifier</i></ins>
+  in the <i>decl-specifier-seq</i>
+  of a <i>parameter-declaration</i> of the <i>lambda-expression</i>,
+  or if the lambda has a <i>template-parameter-list</i>.
+  [<i>Example:</i> [&hellip;] &mdash;<i>end example</i>]</p>
+</blockquote>
+
 <p>
-  In <a href="#part2">Part 2</a>, we note that trailing return types are also used for <i>return-type-requirement</i>s
-  and we propose for a meaning to be given for use of plain <code>auto</code> in such a context. Further building along that direction, the form of
-  <i>return-type-requirement</i> involving a concept to be satisfied becomes merely a generalization of
-  <i>trailing-return-type</i>s with placeholder types. The deduction as described in Part 2 is based on the status quo of the post-Rapperswil working
-  draft, and it is similar to that of the TS and to the deduction that occurs for return type deduction.
+  In [expr.prim.lambda.closure, 7.5.5.1], modify paragraph 3.
 </p>
-<p>
-  P1084R0 explains that the existing deduction rules associated with <i>return-type-requirement</i>s is lacking in terms of expressing certain desired
-  semantics. As a solution, it proposed making <code>-&gt; Constraint</code> more of a special case in the context of a
-  <i>return-type-requirement</i>. Expressed in terms of deduction, the semantics proposed by P1084R0 is more akin to deduction for a theoretical
-  <code>decltype((auto))</code> than to deduction for <code>auto</code>. Which is to say that the semantics for
-</p>
-<blockquote><pre><code>-&gt; Constraint</code></pre></blockquote>
-<p>
-  as proposed in P1084R0 is incongruous with how we would describe the semantics of
-</p>
-<blockquote><pre><code>-&gt; Constraint auto</code></pre></blockquote>
-<p>
-   in the context of this paper.
-</p>
-<p>
-  This paper raises the possibility of expressing the semantics requested in P1084R0 in a different manner.
-  <code>{(E)} -&gt; Constraint decltype(auto);</code>
-  produces the effect that P1084R0 requests for
-  <code>{E} -&gt; Constraint;</code>
-  in terms of applying <code>Constraint</code> with <code>decltype((E))</code>
-  as the argument to its prototype parameter.
-  There is a further consideration as to whether convertibility, as opposed to type identity, should be enforced; in particular,
-  P1084R0 leaves the possibility that
-  <code>{A()} -&gt; std::Same&lt;A&gt;</code>
-  would be satisfied, but
-  <code>{A()} -&gt; A</code>
-  would not be.
-</p>
-<p>
-  Three different kinds of convertibility requirement have been applied in the various iterations of <i>return-type-requirement</i> thus far.
-  With
-  WD signifying <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/n4762.pdf">N4762</a>,
-  TS signifying <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2017/n4674.pdf">N4674</a>,
-  and <code>return</code> representing return type deduction (whether under the TS or under this proposal);
-  the table below summarizes:
-</p>
-<table class="table">
-  <colgroup span="1"></colgroup>
-  <colgroup span="4"></colgroup>
-  <colgroup span="4"></colgroup>
-  <thead>
-  <tr>
-    <td></td>
-    <th colspan="4" scope="colgroup">Concrete type</th>
-    <th colspan="4" scope="colgroup">Placeholder type</th>
-  </tr>
-  </thead>
-  <tbody>
-  <tr>
-    <td></td>
-    <th scope="col">WD</th>
-    <th scope="col">TS</th>
-    <th scope="col"><code>return</code></th>
-    <th scope="col">P1084</th>
-    <th scope="col">WD</th>
-    <th scope="col">TS</th>
-    <th scope="col"><code>return</code></th>
-    <th scope="col">P1084</th>
-  </tr>
-  <tr>
-    <th scope="row">Deduction only</th>
-    <td></td>
-    <td></td>
-    <td></td>
-    <td></td>
-    <td>X</td>
-    <td></td>
-    <td></td>
-    <td>X</td>
-  </tr>
-  <tr>
-    <th scope="row">Implicit conversion sequence</th>
-    <td></td>
-    <td></td>
-    <td></td>
-    <td></td>
-    <td></td>
-    <td>X</td>
-    <td></td>
-    <td></td>
-  </tr>
-  <tr>
-    <th scope="row">Well-formed copy initialization</th>
-    <td>X</td>
-    <td>X</td>
-    <td>X</td>
-    <td>X</td>
-    <td></td>
-    <td></td>
-    <td>X</td>
-    <td></td>
-  </tr>
-  </tbody>
+
+<blockquote class="std">
+  <p>The closure type for a <del>non-generic</del> <i>lambda-expression</i> has a public inline
+  function call operator <ins>(for a non-generic lambda) or function call operator template (for a generic lambda)</ins> (11.5.4)
+  whose parameters and return type are described
+  by the <i>lambda-expression</i>&rsquo;s <i>parameter-declaration-clause</i>
+  and <i>trailing-return-type</i> respectively<del>. For a generic lambda,
+  the closure type has a public inline function call
+  operator member template (12.6.2) </del><ins>, and</ins> whose <i>template-parameter-list</i>
+  consists of the specified <i>template-parameter-list</i>, if any<del>, to which is
+  appended one invented type <i>template-parameter</i> for each occurrence of
+  <code>auto</code> in the lambda&rsquo;s <i>parameter-declaration-clause</i>, in
+  order of appearance.
+  The invented type <i>template-parameter</i> is a template parameter pack if
+  the corresponding parameter-declaration declares a function parameter pack (9.2.3.5).
+  The return type and function parameters of the function call operator template
+  are derived from the <i>lambda-expression</i>&rsquo;s <i>trailing-return-type</i>
+  and <i>parameter-declaration-clause</i> by replacing each occurrence of
+  <code>auto</code> in the <i>decl-specifier</i>s of the
+  <i>parameter-declaration-clause</i> with the name of the corresponding
+  <i>invented template-parameter</i></del>. The <i>requires-clause</i> of the function
+  call operator template is the <i>requires-clause</i> immediately following
+  <code>&lt;</code> <i>template-parameter-list</i> <code>&gt;</code>, if any. The trailing
+  <i>requires-clause</i> of the function call operator or operator template is
+  the <i>requires-clause</i> following the <i>lambda-declarator</i>, if any.
+  <ins>[<i>Note</i>: The function call operator for a generic lambda might
+  be an abbreviated function template (9.2.3.5). &mdash;<i>end note</i>]</ins>
+  [<i>Example:</i> [&hellip;] &mdash;<i>end example</i>]</p>
+</blockquote>
+
+<p>Modify paragraph 6 as follows.</p>
+
+<blockquote class="std">
+<p><ins>[<i>Note</i>:</ins> The function call operator or operator template may be constrained (12.4.2)
+by a <del><i>constrained-parameter</i></del><ins><i>type-constraint</i></ins>
+(12.1), a <i>requires-clause</i> (Clause 12), or a
+trailing <i>requires-clause</i> (9.2)<ins></ins>. [<i>Example</i>:</p>
+<blockquote><pre><code>template &lt;typename T&gt; concept C1 = /* ... */;
+template &lt;std::size_t N&gt; concept C2 = /* ... */;
+template &lt;typename A, typename B&gt; concept C3 = /* ... */;
+
+auto f = []&lt;typename T1, C1 T2&gt; requires C2&lt;sizeof(T1) + sizeof(T2)&gt;
+         (T1 a1, T1 b1, T2 a2, auto a3, auto a4) requires C3&lt;decltype(a4), T2&gt; {
+  // T2 is <del>a constrained parameter</del><ins>constrained by a <i>type-constraint</i></ins>,
+  // T1 and T2 are constrained by a <i>requires-clause</i>, and
+  // T2 and the type of a4 are constrained by a trailing <i>requires-clause</i>.
+};</code></pre></blockquote>
+<p>&mdash;<i>end example</i>] <ins>&mdash;<i>end note</i>]</ins></p>
+</blockquote>
+
+<h3 id="wordingdcl">Changes in [dcl]</h3>
+
+<p>Change [dcl.type.simple, 9.1.7.2] paragraph 1 to add <i>placeholder-type-specifier</i>s.</p>
+
+<blockquote class="std">
+<blockquote><pre><code><i>simple-type-specifier</i>:
+        <i>nested-name-specifier<sub>opt</sub> type-name</i>
+        <i>nested-name-specifier</i> template <i>simple-template-id</i>
+        <i>nested-name-specifier<sub>opt</sub> template-name</i>
+        char
+        char16_t
+        char32_t
+        wchar_t
+        bool
+        short
+        int
+        long
+        signed
+        unsigned
+        float
+        double
+        void
+        <del>auto</del>
+        <i>decltype-specifier</i>
+        <ins><i>placeholder-type-specifier</i></ins>
+
+<i>type-name</i>:
+        class-name
+        enum-name
+        typedef-name
+        simple-template-id
+
+<i>decltype-specifier</i>:
+        decltype ( expression )
+        <del>decltype ( auto )</del>
+
+<ins><i>placeholder-type-specifier</i>:</ins>
+        <ins><i>type-constraint</i><sub>opt</sub> auto</ins>
+        <ins><i>type-constraint</i><sub>opt</sub> decltype ( auto )</ins>
+</code></pre></blockquote>
+</blockquote>
+
+<p>Modify paragraph 2 as follows.</p>
+
+<blockquote class="std">
+<p><del>The <i>simple-type-specifier</i> <code>auto</code></del><ins>A
+<i>placeholder-type-specifier</i></ins> is a placeholder for a type to
+be deduced (9.1.7.4).</p>
+</blockquote>
+
+<p>Add <i>placeholder-type-specifier</i>s to the table of
+<i>simple-type-specifier</i>s and their meaning.</p>
+
+<blockquote class="std">
+<table>
+<tr><td>Specifier(s)</td><td>Type</td></tr>
+<tr><td><i>type-name</i></td><td>the type named</td></tr>
+<tr><td><i>simple-template-id</i><td>the as defined in 12.2</td></tr>
+<tr><td>...</td><td>...</td></tr>
+<tr><td><code>void</code></td><td>&ldquo;<code>void</code>&rdquo;</td></tr>
+<tr><td><del><code>auto</code></del><td><del>placeholder for a type to be deduced</del></td></tr>
+<tr><td><del><code>decltype(auto)</code></del><td><del>placeholder for a type to be deduced</del></td></tr>
+<tr><td><code>decltype(<i>expression</i>)</code><td>the type as described below</td></tr>
+<tr><td><ins><i>placeholder-type-specifier</i></ins><td><ins>placeholder for a type to be deduced</ins></td></tr>
 </table>
-<p>
-  The deduction-only situation with the WD may well be a wording defect, since <code>{0} -&gt; std::Same&lt;int&gt;&amp;</code> would surprisingly not fail.
-  Similarly, for the TS, the difference between requiring an implicit conversion sequence and requiring a well-formed copy initialization is somewhat subtle.
-  Nevertheless, the treatment for concrete types differ from that of types involving placeholders for every iteration of <i>return-type-requirement</i> thus far
-  (given that return type deduction is present for comparison only). This seems undesirable.
+</blockquote>
+
+<p>In [dcl.spec.auto, 9.1.7.4], modify and split paragraph 1 as follows.</p>
+
+<blockquote class="std">
+<p><del>The <code>auto</code> and <code>decltype(auto)</code>
+<i>type-specifier</i>s are used to</del><ins>A <i>placeholder-type-specifier</i></ins>
+designate<ins>s</ins> a placeholder type that will be replaced later by deduction
+  from an initializer.</p>
+
+
+
+<p>  <ins>A <i>placeholder-type-specifier</i> of the form <i>type-constraint</i><sub>opt</sub> <code>auto</code> can be used in the <i>decl-specifier-seq</i>
+    of a <i>parameter-declaration</i> of a function declaration or <i>lambda-expression</i> and signifies that the function is an
+abbreviated function template (9.2.3.5) or the</ins><del>The <code>auto</code>
+<i>type-specifier</i> is also used to introduce a function type having a
+<i>trailing-return-type</i> or to signify that a</del> lambda is a generic
+lambda (7.5.5).<del> The <code>auto</code> <i>type-specifier</i> is also used to introduce a
+   structured binding declaration (9.5).</del></p>
+</blockquote>
+
+<p>Modify (old) paragraph 3 as follows.</p>
+
+<blockquote class="std">
+<p>The type of a variable declared using <del><code>auto</code> or
+<code>decltype(auto)</code></del><ins>a placeholder type</ins> is deduced
+from its initializer. This use is allowed in an initializing declaration (9.3)
+of a variable. <del><code>auto</code> or <code>decltype(auto)</code></del><ins>The
+placeholder type</ins> shall appear as one of the
+<i>decl-specifier</i>s in the <i>decl-specifier-seq</i> and the
+<i>decl-specifier-seq</i> shall be followed by one or more declarators, each
+of which shall be followed by a non-empty initializer. [&hellip;]&mdash;<i>end example</i>]
+<ins>The <code>auto</code> <i>type-specifier</i> can also be used to introduce a
+structured binding declaration (9.5).</ins></p>
+</blockquote>
+
+<p>Modify (old) paragraph 5 as follows.</p>
+
+<blockquote class="std">
+<p>A program that uses <del><code>auto</code> or <code>decltype(auto)</code></del><ins>a
+placeholder type</ins> in a context not explicitly allowed in this
+subclause is ill-formed.</p>
+</blockquote>
+
+<p>In [dcl.type.auto.deduct, 9.1.7.4.1], modify the last sentence of paragraph 2 as follows.</p>
+
+<blockquote class="std">
+<p>[&hellip;] In the case of a return statement with no operand or with an operand of type
+<code>void</code>, <code>T</code> shall be either
+<ins><i>type-constraint</i><sub>opt</sub> </ins><code>decltype(auto)</code>or
+<i>cv</i> <ins><i>type-constraint</i><sub>opt</sub> </ins><code>auto</code>.</p>
+</blockquote>
+
+<p>Modify paragraph 4 as follows.</p>
+
+<blockquote class="std">
+<p>If the <del>placeholder is the <code>auto</code>
+<i>type-specifier</i></del><ins><i>placeholder-type-specifier</i> is of the form
+<i>type-constraint</i><sub>opt</sub> <code>auto</code></ins>, the deduced type
+<code>T&prime;</code> replacing <code>T</code> is determined using the rules for
+template argument deduction. Obtain <code>P</code> from <code>T</code> by
+replacing the occurrences of <ins><i>type-constraint</i><sub>opt</sub> </ins><code>auto</code>
+with either a new invented
+type template parameter <code>U</code> or, if the initialization is copy-list-initialization,
+with <code>std::initiali&shy;zer_list&lt;U&gt;</code>. [&hellip;]
 </p>
-<p>
-  The WD situation shows that some sort of requirement would be needed since deduction is not sufficient.
-  A convertibility requirement is an option; however, P1084 does not impose a convertibility requirement for the placeholder case.
-  Under P1084, the placeholder case would trivially pass a value category-aware type identity check.
-  Requiring such a check of <code>decltype((E))</code> being the same as the type in the <i>return-type-requirement</i> (after substitution of the deduced placeholders, if any)
-  is also an option. P1084 proposes a generalization of a same-type constraint, applying a change only to the placeholder case;
-  this latter option is an application of a generalized same-type constraint on the non-placeholder case (as well as to placeholder cases that P1084 drops).
+</blockquote>
+
+<p>Modify paragraph 5 as follows.</p>
+
+<blockquote class="std">
+<p>If the <del>placeholder is the <code>decltype(auto)</code>
+<i>type-specifier</i></del><ins><i>placeholder-type-specifier</i> is of the form
+<i>type-constraint</i><sub>opt</sub> <code>decltype(auto)</code></ins>,
+<code>T</code> shall be the placeholder alone. The type deduced
+for <code>T</code> is deter&shy;mined [&hellip;]
 </p>
+</blockquote>
+
+<p>Append a new paragraph as follows.</p>
+
+<blockquote class="stdins">
+  <p>?. For a <i>placeholder-type-specifier</i> with a <i>type-constraint</i>,
+    if the type deduced for the placeholder does not satisfy its immediately-declared constraint ([temp, 12]),
+the program is ill-formed.</p>
+</blockquote>
+
+<p>Add the following paragraphs to [dcl.fct, 9.2.3.5], after paragraph 16.</p>
+
+<blockquote class="stdins">
 <p>
-  For a parenthesized lvalue of type <code>int</code>, the following table describes the value category-aware type identity check:
-</p>
-<table class="table">
-  <thead>
-  <tr>
-    <td></td>
-    <th>Type deduced/passed to prototype parameter</th>
-    <th>Type to match</th>
-    <th>Type matches</th>
-  </tr>
-  </thead>
-  <tbody>
-  <tr>
-    <th><code>auto</code></th>
-    <td><code>int</code></td>
-    <td><code>int</code></td>
-    <td>no</td>
-  </tr>
-  <tr>
-    <th><code>C</code></th>
-    <td><code>int</code></td>
-    <td><code>int</code></td>
-    <td>no</td>
-  </tr>
-  <tr>
-    <th><code>C&amp;</code></th>
-    <td><code>int</code></td>
-    <td><code>int&amp;</code></td>
-    <td>yes</td>
-  </tr>
-  <tr>
-    <th><code>C&amp;&amp;</code> (forwarding reference)</th>
-    <td><code>int&amp;</code></td>
-    <td><code>int&amp;</code></td>
-    <td>yes</td>
-  </tr>
-  <tr>
-    <th><code>C decltype(auto)</code></th>
-    <td><code>int&amp;</code></td>
-    <td><code>int&amp;</code></td>
-    <td>yes</td>
-  </tr>
-  <tr>
-    <th><code>const C&amp;</code></th>
-    <td><code>int</code></td>
-    <th><code>const int&amp;</code></th>
-    <td>no</td>
-  </tr>
-  <tr>
-    <th><code>int</code></th>
-    <td>N/A</td>
-    <th><code>int</code></th>
-    <td>no</td>
-  </tr>
-  <tr>
-    <th><code>int&amp;</code></th>
-    <td>N/A</td>
-    <th><code>int&amp;</code></th>
-    <td>yes</td>
-  </tr>
-  <tr>
-    <th><code>int&amp;&amp;</code></th>
-    <td>N/A</td>
-    <th><code>int&amp;&amp;</code></th>
-    <td>no</td>
-  </tr>
-  </tbody>
-</table>
+?. An <i>abbreviated function template</i> is a function declaration whose
+parameter-type-list includes one or more placeholders (9.1.7.4). An
+abbreviated function template is equivalent to a function template (17.6.5)
+whose <i>template-parameter-list</i> includes one invented type
+<i>template-parameter</i> for each occurrence of a placeholder type in the
+<i>decl-specifier-seq</i> of a <i>parameter-declaration</i> in the
+function&rsquo;s parameter-type-list, in order of
+appearance.
+
+For a <i>placeholder-type-specifier</i> of the form <code>auto</code>, the
+invented parameter is an unconstrained <i>type-parameter</i>.
+For a <i>placeholder-type-specifier</i> of the form <i>type-constraint</i> <code>auto</code>,
+the invented parameter is a <i>type-parameter</i> with that <i>type-constraint</i>.
+The invented type <i>template-parameter</i> is a template parameter pack if
+the corresponding parameter-declaration declares a function parameter pack (9.2.3.5).
+If the placeholder contains <code>decltype(auto)</code>, the program is ill-formed.
+
+The adjusted function parameters of an abbreviated function template are
+derived from the <i>parameter-declaration-clause</i> by replacing each
+occurrence of a placeholder with the name of the corresponding invented
+<i>template-parameter</i>.</p>
+<p>[<i>Example</i>:</p>
+<blockquote><pre><code>template&lt;typename T&gt;     concept C1 = /* ... */;
+template&lt;typename T&gt;     concept C2 = /* ... */;
+template&lt;typename... Ts&gt; concept C4 = /* ... */;
+
+void g1(const C1 auto*, C2 auto&amp;);
+void g3(C1 auto&amp;...);
+void g5(C4 auto...);
+void g7(C4 auto);
+</code></pre></blockquote>
+<p>These declarations are functionally equivalent (but not equivalent) to the following declarations.</p>
+<blockquote><pre><code>template&lt;C1 T, C2 U&gt; void g1(const T*, U&amp;);
+template&lt;C1... Ts&gt;   void g3(Ts&amp;...);
+template&lt;C4... Ts&gt;   void g5(Ts...);
+template&lt;C4 T&gt;       void g7(T);
+</code></pre></blockquote>
+<p>Abbreviated function templates can be specialized like all function templates.</p>
+<blockquote><pre><code>template&lt;&gt; void g1&lt;int&gt;(const int*, const double&amp;);   // OK, specialization of g1&lt;int, const double&gt;
+</code></pre></blockquote>
+<p>&mdash;<i>end example</i>]</p>
+
 <p>
-  In brief, <code>auto</code> means &ldquo;is a prvalue&rdquo;,
-  <code>const C&amp;</code> means &ldquo;is an lvalue of <code>const T</code> requiring <code>C&lt;T&gt;</code>&rdquo;,
-  <code>int&amp;&amp;</code> means &ldquo;is an <code>int</code> xvalue&rdquo;, and
-  <code>C decltype(auto)</code> has the semantics requested in P1084 for all parenthesized expressions.
+?. An abbreviated function template can have a <i>template-head</i>.
+The invented <i>template-parameter</i>s are appended to the
+<i>template-parameter-list</i> after the explicitly declared
+<i>template-parameter</i>s.
+<p>[<i>Example</i>:</p>
+<blockquote><pre><code>template&lt;typename&gt; concept C = /* ... */;
+
+template &lt;typename T, C U&gt;
+  void g(T x, U y, C auto z);</code></pre></blockquote>
+<p>This is functionally equivalent to each of the following two declarations.</p>
+<blockquote><pre><code>template&lt;typename T, C U, C W&gt;
+  void g(T x, U y, W z);
+
+template&lt;typename T, typename U, typename W&gt;
+  requires C&lt;U&gt; &amp;&amp; C&lt;W&gt;
+  void g(T x, U y, W z);</code></pre></blockquote>
+<p>&mdash;<i>end example</i>]</p>
+
+<p>
+  ?. A function declaration at block scope shall not declare
+  an abbreviated function template.
 </p>
+</blockquote>
+
+<h3 id="wordingtemp">Changes in [temp]</h3>
+
+<p>Add to the grammar in [temp, 12] the following.</p>
+
+<blockquote class="std">
+<blockquote><pre><code><i>concept-name</i>:
+      <i>identifier</i>
+
+<ins><i>type-constraint</i>:</ins>
+      <ins><i>nested-name-specifier<sub>opt</sub> concept-name</i></ins>
+      <ins><i>nested-name-specifier<sub>opt</sub> concept-name</i> &lt; <i>template-argument-list<sub>opt</sub></i> &gt;</ins>
+</code></pre></blockquote>
+</blockquote>
+
+<p>Append a new paragraph as follows.</p>
+
+<blockquote class="stdins">
+<p>?. A <i>type-constraint</i>
+<code>Q</code> that designates a concept <code>C</code> can be used to constrain a contextually-determined type or template type parameter pack <code>T</code> with a <i>constraint-expression</i> <code>E</code> defined as follows.
+If <code>Q</code> is of the form <code>C&lt;A1, ..., An&gt;</code>,
+then let <code>E&prime;</code> be <code>C&lt;T, A1, ..., An&gt;</code>. Otherwise, let <code>E&prime;</code> be <code>C&lt;T&gt;</code>.
+If <code>T</code> is not a pack, then <code>E</code> is <code>E&prime;</code>, otherwise
+<code>E</code> is <code>(E&prime; &amp;&amp; ...)</code>.
+This is called the <em>immediately-declared constraint</em> of <code>T</code>.
+The concept designated by a <i>type-constraint</i> shall be
+a type concept (12.6.8).</p>
+</blockquote>
+
+<p>
+  Change [temp.param, 12.1] paragraph 1 to remove the grammar for
+  <i>constrained-parameter</i> and to enhance the grammar of
+  <i>type-parameter</i>.
+</p>
+
+<p><em>Editorial note:</em> No further appearances of &ldquo;<i>qualified-concept-name</i>&rdquo;
+  should remain in the working draft after application of P1084R2 and P1141R2 (this paper).</p>
+
+<blockquote class="std">
+<blockquote><pre><code><i>template-parameter</i>:
+      <i>type-parameter</i>
+      <i>parameter-declaration</i>
+      <del><i>constrained-parameter</i></del>
+
+<i>type-parameter</i>:
+      <i>type-parameter-key</i> ...<sub>opt</sub> <i>identifier</i><sub>opt</sub>
+      <i>type-parameter-key identifier</i><sub>opt</sub> = <i>type-id</i>
+      <ins><i>type-constraint</i> ...<sub>opt</sub> <i>identifier</i><sub>opt</sub></ins>
+      <ins><i>type-constraint identifier</i><sub>opt</sub> = <i>type-id</i></ins>
+      <i>template-head type-parameter-key</i> ...<sub>opt</sub> <i>identifier</i><sub>opt</sub>
+      <i>template-head type-parameter-key identifier</i><sub>opt</sub> = <i>id-expression</i>
+
+<i>type-parameter-key</i>:
+      class
+      typename
+
+<del><i>constrained-parameter</i>:</del>
+      <del><i>qualified-concept-name</i> ... <i>identifier<sub>opt</sub></i></del>
+      <del><i>qualified-concept-name identifier<sub>opt</sub> default-template-argument<sub>opt</sub></i></del>
+
+<del><i>qualified-concept-name</i>:</del>
+      <del><i>nested-name-specifier<sub>opt</sub> concept-name nested-name-specifier<sub>opt</sub>partial-concept-id</i></del>
+
+<del><i>partial-concept-id</i>:</del>
+      <del><i>concept-name</i> &lt; <i>template-argument-list<sub>opt</sub></i> &gt;</del></code></pre>
+</blockquote>
+</blockquote>
+
+<p>Change [12.1, temp.param] paragraph 9 as follows.</p>
+
+<blockquote class="std">
+<p>
+  <del>A <i>partial-concept-id</i> is a <i>concept-name</i>
+  followed by a sequence of <i>template-arguments</i>.
+  These template arguments are used to form a <i>constraint-expression</i>
+  as described below.</del><ins>A <i>type-parameter</i> that starts with a
+  <i>type-constraint</i> introduces the immediately-declared constraint
+  of the parameter.</ins>
+</p>
+</blockquote>
+
+<p>Delete [12.1, temp.param] paragraph 10.</p>
+
+<blockquote class="stddel">
+<p>
+  <del>A <i>constrained-parameter</i> declares a template parameter whose
+  kind (type, non-type, template) and type
+  match that of the prototype parameter (12.6.8) of the
+  concept designated by the <i>qualified-concept-name</i>
+  in the <i>constrained-parameter</i>.
+  Let <code>X</code> be the prototype parameter of the designated concept.
+  The declared template parameter is determined by the kind of <code>X</code>
+  (type, non-type, template)
+  and the optional ellipsis in the <i>constrained-parameter</i> as follows.</del>
+</p>
+<ul class="del">
+  <li><del>If <code>X</code> is a type <i>template-parameter</i>,
+    the declared parameter is a type <i>template-parameter</i>.</del></li>
+  <li><del>If <code>X</code> is a non-type <i>template-parameter</i>,
+    the declared parameter is a non-type <i>template-parameter</i>
+    having the same type as <code>X</code>.</del></li>
+  <li><del>If <code>X</code> is a template <i>template-parameter</i>,
+    the declared parameter is a template <i>template-parameter</i>
+    having the same <i>template-parameter-list</i> as <code>X</code>,
+    excluding default template arguments.</del></li>
+  <li><del>If the <i>qualified-concept-name</i> is followed by an ellipsis,
+    then the declared parameter is a template parameter pack (temp.variadic, 12.6.3).</del></li>
+</ul>
+<p><del>[<i>Example</i>:</del></p>
+<blockquote><pre><code><del>template&lt;typename T&gt; concept C1 = true;
+template&lt;template&lt;typename&gt; class X&gt; concept C2 = true;
+template&lt;int N&gt; concept C3 = true;
+template&lt;typename... Ts&gt; concept C4 = true;
+template&lt;char... Cs&gt; concept C5 = true;
+
+template&lt;C1 T&gt; void f1();           // OK, T is a type template-parameter
+template&lt;C2 X&gt; void f2();           // OK, X is a template with one type-parameter
+template&lt;C3 N&gt; void f3();           // OK, N has type int
+template&lt;C4... Ts&gt; void f4();       // OK, Ts is a template parameter pack of types
+template&lt;C4 T&gt; void f5();           // OK, T is a type template-parameter
+template&lt;C5... Cs&gt; void f6();       // OK, Cs is a template parameter pack of chars</del>
+</code>
+</pre>
+</blockquote>
+<p><del>&mdash;<i>end example</i>]</del></p>
+</blockquote>
+
+<p>In [12.1, temp.param], delete the normative wording of (old)
+paragraph 11 and merge the (modified) example into paragraph 9 as follows.</p>
+
+<p><em>Editorial note:</em> This change effects the design change of Part 4 (changing
+the meaning of <code>...</code>). The new pack expansion behaviour is subsumed by
+the &ldquo;immediately-declared constraint&rdquo; facility.</p>
+
+<blockquote class="std">
+<p>
+  <del>A <i>constrained-parameter</i> <i>constraint-expression</i>.
+  The expression is derived from
+  the <i>qualified-concept-name</i> <code>Q</code>
+  in the <i>constrained-parameter</i>, its designated concept <code>C</code>,
+  and the declared template parameter <code>P</code>.</del>
+</p>
+
+<ul>
+  <li><del>First, a template argument
+      <code>A</code> is invented from <code>P</code>.
+      If <code>P</code> declares a template parameter pack ([temp.variadic])
+      and <code>C</code> is a variadic concept ([temp.concept]), then <code>A</code>
+      is the pack expansion <code>P...</code>. Otherwise, <code>A</code> is
+      the <i>id-expression</i> <code>P</code>.</del></li>
+    <li><del>Then, an <i>id-expression</i> <code>E</code>
+      is formed as follows.
+      If <code>Q</code> is a <i>concept-name</i>, then
+      <code>E</code> is <code>C&lt;A&gt;</code>.
+      Otherwise, <code>Q</code> is a <i>partial-concept-id</i> of the
+      form <code>C&lt;A1, A2, ..., An&gt;</code>,
+      and <code>E</code> is <code>C&lt;A, A1, A2, ..., An&gt;</code>.
+    </del></li>
+    <li><del>Finally, if <code>P</code> declares a template parameter pack and <code>C</code>
+      is not a variadic concept, <code>E</code> is adjusted to be the
+      <i>fold-expression</i> <code>(E &amp;&amp; ...)</code> (7.5.6).</del></li>
+  </ul>
+  <p><del><code>E</code> is the introduced <i>constraint-expression</i>.</del></p>
+  <p>[<i>Example</i>:</p>
+  <blockquote><pre><code>template&lt;typename T&gt; concept C1 = true;
+template&lt;typename... Ts&gt; concept C2 = true;
+template&lt;typename T, typename U&gt; concept C3 = true;
+
+template&lt;C1 T&gt; struct s1;          // associates C1&lt;T&gt;
+template&lt;C1... T&gt; struct s2;       // associates (C1&lt;T&gt; &amp;&amp; ...)
+template&lt;C2... T&gt; struct s3;       // associates <del>C2&lt;T...&gt;</del><ins>(C2&lt;T&gt; &amp;&amp; ...)</ins>
+template&lt;C3&lt;int&gt; T&gt; struct s4;     // associates C3&lt;T, int&gt;
+<ins>template&lt;C3&lt;int&gt;... T&gt; struct s5;  // associates (C3&lt;T, int&gt; &amp;&amp; ...)</ins></code></pre></blockquote>
+  <p>&mdash;<i>end example</i>]</p>
+</blockquote>
+
+<p>Insert a new paragraph after (old) paragraph 11.</p>
+
+<blockquote class="stdins">
+<p>?. A non-type template parameter declared with a type that contains
+a placeholder type with a <i>type-constraint</i> introduces the
+immediately-declared constraint of the invented type corresponding
+to the placeholder.</p>
+</blockquote>
+
+<p>Delete (old) paragraph 13.</p>
+<blockquote class="stddel">
+<p><del>The default <i>template-argument</i> of a <i>constrained-parameter</i>
+shall match the kind (type, non-type, template) of the declared template parameter.
+[<i>Example</i>: [&hellip;] &mdash;<i>end example</i>]</del></p></blockquote>
+
+<p>Modify (old) paragraph 19.</p>
+
+<blockquote class="std">
+<p>If a <i>template-parameter</i> is a <i>type-parameter</i> with an ellipsis
+prior to its optional identifier or is a <i>parameter-declaration</i> that
+declares a pack (9.2.3.5), then the <i>template-parameter</i> is a template
+parameter pack (12.6.3). A template parameter pack that is a <i>parameter-declaration</i>
+whose type contains one or more unexpanded packs is a pack expansion.
+Similarly, a template parameter pack that is a <i>type-parameter</i> with a
+<i>template-parameter-list</i> containing one or more unexpanded packs is a pack expansion.
+<ins>A type parameter pack with a <i>type-constraint</i> that contains
+an unexpanded parameter pack is a pack expansion.</ins>
+A template parameter pack that is a pack expansion shall not expand a
+template parameter pack declared in the same template-parameter-list.
+</p></blockquote>
+
+<p>Modify [temp.constr.decl, 12.4.2] paragraph 2 as follows.</p>
+
+<blockquote class="std">
+<p>Constraints can also be associated with a declaration through the use of
+<del><i>constrained-parameter</i>s</del><ins><i>type-constraint</i>s</ins>
+in a <i>template-parameter-list</i>. Each of these forms introduces additional
+<i>constraint-expression</i>s that are used to constrain the declaration.</p>
+</blockquote>
+
+<p>Modify paragraph 3 as follows.</p>
+<blockquote class="std">
+  <p>A template&rsquo;s <i>associated constraints</i> are defined as follows:</p>
+  <ul>
+    <li>[&hellip;]</li>
+    <li>
+      Otherwise, the associated constraints are the normal form
+      of a logical AND expression (7.6.14) whose operands are in
+      the following order:
+      <ul>
+        <li>the <i>constraint-expression</i> introduced by each
+          <del><i>constrained-parameter</i></del><ins><i>type-constraint</i></ins>
+          (12.1) in the declaration&rsquo;s template-parameter-list, in order of appearance, and</li>
+        <li>the <i>constraint-expression</i> introduced by a <i>requires-clause</i>
+          following a template-parameter-list (Clause12), and</li>
+        <li><ins>the <i>constraint-expression</i> introduced by <i>type-constraint</i>
+            in the parameter-type-list of a function declaration</ins></li>
+        <li>the <i>constraint-expression</i> introduced by a
+          <i>trailing requires-clause</i> (9.2) of a function declaration (9.2.3.5).</li>
+      </ul>
+    </li>
+  </ul>
+</blockquote>
+
+
+<p>Modify [temp.decls, 12.6] paragraph 2 as follows.</p>
+
+<blockquote class="std">
+<p>
+For purposes of name lookup and instantiation, default arguments,
+<del><i>partial-concept-id</i>s</del><ins><i>type-constraint</i>s</ins>,
+<i>requires-clause</i>s (Clause 12), and <i>noexcept-specifier</i>s
+of function templates and of member functions of class templates
+are considered definitions; each default argument,
+<del><i>partial-concept-id</i>s</del><ins><i>type-constraint</i></ins>,
+<i>requires-clause</i>, or <i>noexcept-specifier</i> is a separate
+definition which is unrelated to the templated function definition
+or to any other default arguments<del> <i>partial-concept-id</i>s</del><ins>,
+<i>type-constraint</i>s</ins>, <i>requires-clause</i>s, or
+<i>noexcept-specifier</i>s. For the purpose of instantiation,
+the substatements of a constexpr if statement (8.4.1) are considered definitions.</p>
+</blockquote>
+
+<p>Modify [temp.variadic, 12.6.3] paragraph 5 bullet (5.3.2) as follows.</p>
+
+<blockquote class="std">
+  <p>A <i>pack expansion</i> consists of [&hellip;]</p>
+  <ul>
+    <li>[&hellip;]</li>
+    <li>In a template parameter pack that is a pack expansion (12.1):
+      <ul>
+        <li>if the template parameter pack is a <i>parameter-declaration</i>;
+          the pattern is the parameter-declaration without the ellipsis;</li>
+        <li>if the template parameter pack is a <i>type-parameter</i><del> with
+          a <i>template-parameter-list</i></del>; the pattern is the
+          corresponding <i>type-parameter</i> without the ellipsis.</li>
+      </ul>
+    </li>
+    <li>In an <i>initializer-list</i> (9.3); the pattern is an <i>initializer-clause</i>.</li>
+    <li>[&hellip;]</li>
+  </ul>
+</blockquote>
+
+<p>Modify the example in [temp.concept, 12.6.8] paragraph 2 as follows.</p>
+<blockquote class="std">
+<blockquote><pre><code>...
+template&lt;C T&gt;  // C<ins>, as a <i>type-constraint</i>,</ins> constrains f2(T)<del> as a <i>constrained-parameter</i></del>
+...</code></pre></blockquote>
+</blockquote>
+
+<p>Modify paragraph 6 as follows.</p>
+
+<blockquote class="std">
+<p>The first declared template parameter of a concept definition is its
+<i>prototype parameter</i>. <ins>A <i>type concept</i> is a concept whose
+prototype parameter is a type <i>template-parameter</i></ins>.<del>A
+<i>variadic concept</i> is a concept whose prototype parameter is a template
+parameter pack.</del></p>
+</blockquote>
+
+<p>Modify [temp.res, 12.7] paragraph 8 item (8.2) as follows.</p>
+
+<blockquote class="std">
+  <ul>
+    <li>no valid specialization can be generated for a template or
+      a substatement of a constexpr if statement (8.4.1) within
+      a template and the template is not instantiated, or</li>
+    <li>no substitution of template arguments into a
+      <del><i>partial-concept-id</i></del><ins><i>type-constraint</i></ins>
+      or <i>requires-clause</i> would result in a valid expression, or
+    </li>
+    <li>every valid specialization of a variadic template
+      requires an empty template parameter pack, or</li>
+    <li>[&hellip;]</li>
+  </ul>
+</blockquote>
+
+<p>Modify the note in [temp.inst, 12.8.1] paragraph 1 as follows.</p>
+
+<blockquote class="std">
+<p>[&hellip;] [<i>Note</i>: Within a template declaration,
+a local class (10.5) or enumeration and the members of
+a local class are never considered to be entities that can
+be separately instantiated (this includes their default
+arguments, <i>noexcept-specifier</i>s, and non-static
+data member initializers, if any, but not their
+<del><i>partial-concept-id</i>s</del><ins><i>type-constraint</i>s</ins>
+or <i>requires-clause</i>s). [&hellip;]</p>
+</blockquote>
+
+<p>Modify paragarph 17 as follows.</p>
+
+<blockquote class="std">
+<p>The <del><i>partial-concept-id</i>s</del><ins><i>type-constraint</i>s</ins>
+and <i>requires-clause</i> of a template specialization or member function
+are not instantiated along with the specialization or function itself,
+even for a member function of a local class; substitution
+into the atomic constraints [&hellip;]</p>
+</blockquote>
+
 </body>
 </html>
