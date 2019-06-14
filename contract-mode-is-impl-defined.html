@@ -1,0 +1,116 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+	<title>The "default" contract build-level and continuation-mode should be implementation-defined</title>
+
+	<style>
+	p {text-align:justify}
+	li {text-align:justify}
+	blockquote.note
+	{
+		background-color:#E0E0E0;
+		padding-left: 15px;
+		padding-right: 15px;
+		padding-top: 1px;
+		padding-bottom: 1px;
+	}
+	ins {color:#00A000}
+	del {color:#A00000}
+	</style>
+</head>
+<body>
+
+<address align=right>
+Document number: 
+<br/>
+Audience: EWG
+<br/>
+<br/>
+<a href="mailto:ville.voutilainen@gmail.com">Ville Voutilainen</a><br/>
+2019-06-13<br/>
+</address>
+<hr/>
+<h1 align=center>The "default" contract build-level and continuation-mode should be implementation-defined</h1>
+
+<h2>Abstract</h2>
+<p>
+  The current WP is trying to overreach in its specification of what
+  a default build-level for contract attributes is, and what the default
+  setting for continuation mode is. That overreach either has no meaning,
+  or it's potentially dangerously wrong, and we shouldn't try to limit
+  implementations with either meaningless specifications or specifications
+  that try to dictate to implementations what kind of configuration
+  interfaces they provide for programmers. We cannot know what sort
+  of configuration interfaces and with what defaults are appropriate,
+  so the solution is to remove suggestions on that note from the specification.
+  Furthermore, attempts to turn C++ into a "safe" language by default
+  are questionable.
+</p>
+
+<h2>Rationale</h2>
+
+<p>
+  First of all, practically:
+</p>
+<p>
+  clang++ foo.cpp
+</p>
+<p>
+  does not compile foo.cpp as a C++ program. It compiles it with extensions
+  enabled. Any lofty attempts to make compilers do what-ever by default
+  because the standard says so are foolish.
+</p>
+<p>Second, again practically:
+</p>
+<p>
+  g++ -O2 foo.cpp
+</p>
+<p>
+  or even
+</p>
+<p>
+  g++ -pedantic -O2 foo.cpp
+</p>
+<p>
+  has a well-established meaning, and enabling contract checks there
+  would be a disturbing change.
+</p>
+<p>
+  An implementation could just skate around by our attempts to enable
+  contract checking by default. There are (at least) two ways they can do it:
+  <ol>
+    <li>Impl-define that any mention of an optimization flag is a contract build level selection (but some of us wouldn't want that, either).</li>
+    <li>Impl-define that the actual C++ compiler (cc1plus) is the C++ compiler, not
+      the front-end (g++), and orchestrate things so that an invocation
+      of the front-end always passes a -fdisable-contracts down to the
+      c++ compiler, and then our words about default modes mean nothing.</li>
+  </ol>
+</p>
+
+<p>
+  All that is, to some extent, beside the more important point.
+  We cannot know whether contract-checking-by-default is a good choice
+  for C++ at large, in general. We do not have any deployment experience
+  to give us the confidence to go to that direction. Therefore
+  what we should do is leave such decisions to the tools, instead
+  of trying to dictate a lofty doctrine we have no confidence in.
+</p>
+
+<h2>Wording</h2>
+
+<p>In [dcl.attr.contract.check]/3, modify as follows:
+  <pre><blockquote><del>If no build level is explicitly selected, the build level is default.</del> The mechanism for selecting the build level is implementation-defined.
+</blockquote></pre>
+</p>
+
+<p>In [dcl.attr.contract.check]/7, modify as follows:
+  <pre><blockquote>A translation with a
+violation continuation mode set to on continues execution after completing the execution of the violation
+handler. <del>If no continuation mode is explicitly selected, the default continuation mode is off.</del>
+</blockquote></pre>
+</p>
+
+</body>
+
+</html>
