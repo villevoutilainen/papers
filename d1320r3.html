@@ -1,0 +1,298 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+	<title>Allowing contract predicates on non-first declarations</title>
+
+	<style>
+	p {text-align:justify}
+	li {text-align:justify}
+	blockquote.note
+	{
+		background-color:#E0E0E0;
+		padding-left: 15px;
+		padding-right: 15px;
+		padding-top: 1px;
+		padding-bottom: 1px;
+	}
+        ins { text-decoration:none; background-color:#A0FFA0 }
+        del { text-decoration:line-through; background-color:#FFA0A0 }
+	</style>
+</head>
+<body>
+
+<address align=right>
+Document number: D1320R3
+<br/>
+Audience: EWG
+<br/>
+<br/>
+<a href="mailto:ville.voutilainen@gmail.com">Ville Voutilainen</a><br/>
+<a href="mailto:asutton@lock3software.com">Andrew Sutton</a><br/>
+<a href="mailto:rkhlebnikov@bloomberg.net">Rostislav Khlebnikov</a><br/>
+<a href="mailto:dinka.ranns@gmail.com">Nina Ranns</a><br/>
+2019-06-13<br/>
+</address>
+<hr/>
+<h1 align=center>Allowing contract predicates on non-first declarations</h1>
+
+<h2>Abstract</h2>
+<p>
+  This paper proposes allowing contract predicates on non-first
+  declarations for a member function. The rationale of doing so is,
+  in a nutshell, to allow preconditions and postconditions
+  to be implementation details. This thus also introduces the
+  ability to redeclare a member function with a non-defining
+  redeclaration.
+</p>
+
+<h2>Rationale</h2>
+
+<p>
+  The support for contract checking adopted for C++20 allows decorating
+  function declarations with annotations for the function's pre- and
+  postconditions for both free functions and member functions of a class.
+  The current WP requires the contract annotations for either case to be
+  attached to the first function declaration. 
+</p>
+
+<p>
+  There are users that do not want to expose a contract checking
+  mechanism in their class interfaces; there may be an English
+  contract, but the language-level contract enforcement mechanism
+  is an implementation detail that function declarations in
+  a class definition should not expose.
+</p>
+
+<p>
+  Annotating the declaration in a typical scenario of having the declaration
+  in a header file and the definition in a source file allows the contract
+  checking annotations to be visible in more than one translation unit to
+  compilers, static analyzers, and other tools working on per-TU basis.
+  For a human reader, however, in case a proper English contract is provided
+  in form of a comment, the contract-checking annotations only serve
+  to expose the implementation details of which contract checks are performed
+  and which level they are performed at. This not only distracts from the
+  properly defined full contract, but also increases the overall length
+  of a function declaration, especially if the lists of contract-checking
+  annotations are long and many functions are declared within the same
+  (class or namespace) scope. In addition, it is currently not possible
+  to provide a fully insulated implementation of a function with regard
+  to pre- and postcondition checks – any change in the contract annotations
+  would necessarily require recompilation of all clients of a function or class.
+</p>
+
+<p>
+  It is probable that some would suggest that such use cases
+  could be handled with contract assertions in function bodies.
+  The reason why this paper proposes allowing contract predicates
+  on non-first declarations is that
+  <ul>
+    <li>In some cases, there is no body to put an assertion in;
+      defaulted functions and pure virtual functions are examples
+      of this.</li>
+    <li>For postconditions, postconditions are guaranteed to
+      be checked (when checking is enabled in the first place) at function
+      exit; relying on contract assertions is more error-prone.
+  </ul>
+  Furthermore, such an approach either forces to provide the
+  implementation inline or loses the advantages of having the
+  contract-checking annotations in the header file.
+</p>
+
+
+<h2>Usage examples</h2>
+
+<p>
+  We basically propose being able to do this (case #1):<pre>
+    <code>
+      struct X
+      {
+          void f();
+      };
+
+      void X::f() [[expects: foo]]
+      {
+         ...
+      }
+    </code>
+  </pre>
+</p>
+<p>
+  In addition, though, what is also proposed is this (case #2):<pre>
+    <code>
+      struct Y
+      {
+          void f();
+      };
+      void Y::f() [[expects: foo]];
+
+      // definition possibly in a separate translation unit
+      void Y::f() [[expects: foo]]
+      {
+         ...
+      }
+    </code>
+  </pre>
+</p>
+
+<h2>Implementation impact, semantic restrictions</h2>
+
+<p>
+  Allowing contract predicates on a non-first declaration
+  probably means that in some such cases, the checking code
+  can't be laid down at the call site unless the definition
+  is also seen by the compiler.
+</p>
+
+<p>
+  This leads to an implementation concern about being able
+  to decide whether all contract-checking is always done
+  at the definition site, or whether it's possible to
+  allow the caller to do that.
+</p>
+
+<p>
+  Based on an explanation by an implementation vendor,
+  what we need to do is as follows:
+  <ol>
+    <li>If a class definition has a member function declaration
+      <em>without</em> a contract on it, contract checking
+      can be done at the call site if and only if the caller
+      sees another declaration with a contract on it and the
+      definition also sees such a declaration (possibly being
+      one itself).
+    <li>If a class definition has a member function declaration
+      <em>with</em> a contract on it, the contract checking
+      can be done at the call site regardless of other declarations.</li>
+    <li>If the member function declaration in the class definition
+      did not have a contract, and an outside-of-class declaration
+      visible to the caller has a contract, and there is no
+      declaration visible at the
+      site of the definition with a contract on it, the program
+      is ill-formed, no diagnostic required.
+    <li>If a function declaration <em>doesn't</em> have a contract on it, 
+      contract checking can be done at the call site if and only if the caller
+      sees another declaration with a contract on it and the definition also 
+      sees such a declaration (possibly being one itself).
+    <li>If there exists a function declaration with a contract on it visible 
+      to the caller, and there is no declaration with a contract visible at the
+      site of the definition, the program is ill-formed, no diagnostic required.
+  </ol>
+</p>
+
+<h2>Out of class member function declarations</h2>
+<p>
+In order to support case #2, member functions declarations should be allowed outside of the class definition.
+<pre> <code>
+struct A
+{
+     void f();
+};
+void A::f() [[expects: foo]]; 
+</code></pre></p>
+<p>
+The proposal does not suggest allowing redeclarations within the class definition.  
+<pre><code>
+struct B
+{
+     void f();
+     void f() [[expects: foo]]; //error, redeclaration within class definition
+}
+</code> </pre></p>
+<p>
+Suggested rules for default arguments on out of class member function declarations are the same as rules for default arguments on non-member function declarations.  
+<pre> <code>
+struct C
+{
+     void foo(int i, int j, int k = 3);
+};
+
+void C::foo(int i = 1, int j, int k); // error: no previous default argument for parameter j
+void C::foo(int i, int j = 3, int k); // ok
+void C::foo(int i, int j, int k = 3); // error: cannot redefine, even to same value
+</code></pre></p>
+<p>
+Suggested inline specifier rules for out of class member function declarations are the same as rules for the inline specifier when applied to non-member functions.   
+<pre> <code>
+struct D1
+{
+     void foo();
+};
+
+inline void D1::foo(); 
+void D1::foo(){} // ok, D1::foo is inline
+
+struct D2
+{
+     void foo();
+};
+
+void D2::foo(){} 
+inline void D2::foo(); // error, first declaration as inline after definition
+</code>  </pre></p>
+
+<h2>Implementation experience</h2>
+
+<p>
+  This proposal, along with many other things, has been implemented
+  in <a href="https://gitlab.com/lock3/gcc-new">https://gitlab.com/lock3/gcc-new</a>. Notably, that implementation doesn't place the semantic requirement
+  on non-member functions.
+</p>
+
+<h2>Wording</h2>
+
+<p>
+  In [dcl.fct.default]/6, modify as follows:
+  <pre><blockquote>Except for member functions of class templates, the default arguments in a member function <del>definition</del><ins>declaration</ins> that
+appears outside of the class definition are added to the set of default arguments provided by the member
+function declaration in the class definition;
+</blockquote></pre>      
+<p>
+
+<p>
+  In [class.mfct]/1, remove the redeclaration restriction:
+  <pre><blockquote>A member function <del>definition</del><ins>declaration</ins> that appears outside of 
+the class definition shall appear in a namespace scope enclosing the class definition.<ins> A member function 
+declaration shall appear in a class definition only once.</ins><del> Except for member function definitions
+that appear outside of a class definition, and except for explicit specializations of member functions of class
+templates and member function templates (12.8) appearing outside of the class definition, a member function
+shall not be redeclared.</del>
+</blockquote></pre>      
+<p>
+<p>
+  In [class.mfct]/2, modify as follows:
+  <pre><blockquote>An inline member function (whether static or non-static) may also be defined outside of its class definition
+provided <del>either its declaration in the class definition or its definition outside of the class definition</del>
+<ins>there exists a declaration that</sel> declares the function as inline or constexpr.
+</blockquote></pre>      
+<p>
+<p>
+  In [class.mfct]/4, modify as follows:
+  <pre><blockquote>If the <del>definition</del><ins>declaration</ins> of a member function is lexically outside its class definition, 
+the member function name shall be qualified by its class name using the :: operator. [<i>Note</I>: A name used in a member function 
+<del>definition</del><ins>declaration</ins> (that is, in the <i>parameter-declaration-clause</i> including the default arguments 
+(9.2.3.6) or in the member function body) is looked up as described in 6.4. — <i>end note</i>]
+</blockquote></pre>      
+<p>
+	
+<p>In [dcl.attr.contract.cond]/1, modify as follows:
+  <pre><blockquote>A contract condition is a precondition or a postcondition.<ins>If </ins><del>T</del><ins>t</ins>he first declaration 
+of a function<ins> has a contract condition, it</ins> shall specify all contract conditions <del>(if any) </del>of the function. <ins>
+For a non-member function, all declarations that specify a contract condition shall specify the same list of contract conditions. 
+For a member function, a member function redeclaration outside a class definition may specify contract conditions different from the
+ones in the declaration inside a class definition if the declaration inside a class definition had no contract conditions.</ins>
+Subsequent declarations shall either specify no contract conditions or the same list of contract conditions; no diagnostic is required 
+if corresponding conditions will always evaluate to the same value.<ins>For a non-member function, </ins><del>T</del><ins>t</ins>he list 
+of contract conditions of a function shall be the same if the declarations of that function <ins>that contain contract conditions </ins>
+appear in different translation units;no diagnostic required. <ins>For a member function, the  list of contract conditions of a function 
+shall be the same if the redeclarations outside a class definition of that function appear in different translation units; no diagnostic 
+required. [Note: a declaration in a class definition and a declaration outside the class definition may have different lists of contract 
+conditions. --end note] If a definition of a function is reachable at the point of its first declaration that contains contract conditions, 
+the program is ill-formed;no diagnostic required.</ins>
+</blockquote></pre>
+</p>
+
+</body>
+
+</html>
