@@ -1,0 +1,175 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+	<title>A Customization Point for domain-specific allocators</title>
+
+	<style>
+	p {text-align:justify}
+	li {text-align:justify}
+	blockquote.note
+	{
+		background-color:#E0E0E0;
+		padding-left: 15px;
+		padding-right: 15px;
+		padding-top: 1px;
+		padding-bottom: 1px;
+	}
+	ins {color:#00A000}
+	del {color:#A00000}
+	</style>
+</head>
+<body>
+
+<address align=right>
+Document number: dxxxx
+<br/>
+Audience: LEWG
+<br/>
+<br/>
+<a href="mailto:ville.voutilainen@gmail.com">Ville Voutilainen</a><br/>
+<a href="mailto:dinka.ranns@gmail.com">Nina Dinka Ranns</a><br/>
+2019-08-02<br/>
+</address>
+<hr/>
+<h1 align=center>A Customization Point for domain-specific allocators</h1>
+
+<h2>Abstract</h2>
+
+<p>
+  This is a proposal for a new customization point for allocators; namely,
+  it's a mechanism for adapting legacy allocators into uses-allocator
+  construction, and allows external trait-adaptation of legacy allocators into
+  the standard allocator model. Such adaptation allows even legacy
+  allocators that are raw pointers to be used with uses-allocator construction;
+  in such cases, there is no converting constructor on the target
+  legacy allocator type that could be used, because legacy types traffick
+  in allocator pointers. The customization point provides a mechanism
+  for converting a standard allocator into the right kind of target
+  type, including raw pointers.
+</p>
+<p>
+  Such a mechanism is thus a significant migration help for
+  existing code that uses legacy 3rd party allocators, for migrating
+  such code to use standard allocators and standard-allocator-aware
+  types. We can use e.g. pmr::vector with such legacy types and legacy
+  allocators with minimal modifications.
+</p>
+
+<h2>tl;dr</h2>
+
+<p>
+  First, we define a primary template for the customization point:
+</p>
+
+<pre><blockquote><code>template &lt;class _Tp, class _Alloc&gt;
+  struct __domain_allocator_traits {
+    static constexpr bool value = false;
+  };
+</code></blockquote></pre>
+
+<p>A specialization looks roughly like the following:
+</p>
+
+<pre><blockquote><code>namespace std {
+template&lt;&gt;
+struct __domain_allocator_traits&lt;my_value_type, std::pmr::polymorphic_allocator&lt;&gt;&gt; {
+    static constexpr bool value = true;
+    static my_alloc* rebind(std::pmr::polymorphic_allocator&lt;&gt; _a);
+};
+}</code></blockquote></pre>
+
+
+<p>And a real-life specialization looks like the following:
+</p>
+
+<pre><blockquote><code>namespace std {
+  template &lt;class TYPE&gt;
+    struct __domain_allocator_traits&lt;TYPE, typename bsl::enable_if&lt;
+      BloombergLP::bslma::UsesBslmaAllocator&lt;TYPE&gt;::value,
+    std::pmr::polymorphic_allocator&lt;&gt;&gt;::type>
+: BloombergLP::bslma::UsesBslmaAllocator&lt;TYPE&gt;::type
+{
+  static BloombergLP::bslma::Allocator* rebind(std::pmr::polymorphic_allocator&lt;&gt; a)
+    {
+      return dynamic_cast&lt;BloombergLP::bslma::Allocator*&gt;(a.resource());
+    }
+}</code></blockquote></pre>
+
+<p>
+  Finally, we modify uses-allocator construction so that
+  it detects the presence of __domain_allocator_traits&lt;T, Alloc&gt;::rebind
+  and calls it if it's present, and uses the result as an allocator.
+</p>								   
+
+<h2>An alternative way</h2>
+
+<p>
+  In early stages of prototyping of this proposal, we used
+  a simpler downcast operator added to polymorphic_allocator.
+  It looks like this:
+</p>
+
+<pre><blockquote><code>template &lt;typename _Target,
+  typename =
+  enable_if_t&lt;
+    __is_dynamic_castable&lt;_Target*, memory_resource*&gt;::value
+     &amp;&amp; !is_same_v&lt;_Target, memory_resource&gt;&gt;&gt;
+  operator _Target*() const
+    {
+      memory_resource* res = resource();
+      _Target&amp; ret = dynamic_cast&lt;_Target&apm;&gt;(*res);
+      return &amp;ret;
+    }
+</code></blockquote></pre>
+
+<p>
+  This was deemed too fishy (because it's an implicit downcasting
+  conversion) by some early reviewers. It is, however,
+  a much simpler solution than a new customization point. In this
+  alternative approach, uses-allocator construction is not modified,
+  and all that is needed for legacy types is uses_allocator specializations,
+  and with the nifty trick we showed above for __domain_allocator_traits,
+  there needs to be only one (in that case for plain uses_allocator),
+  even though there's dozens of legacy types that need adaptation.
+  There is also no need for a new customization point in this alternative
+  approach.
+</p>
+
+<h2>About the customization points, request for feedback/decision</h2>
+
+<p>
+  We have implemented two approaches:
+  <ul>
+    <li>one where uses_allocator is unmodified</li>
+    <li>another wehere uses_allocator depends on __domain_allocator_traits</li>
+  </ul>
+</p>
+<p>
+  Keeping the customization points separate is sort of kind of nice; it limits
+  the impact of this extension somewhat. But we need to modify uses_allocator
+  construction anyway, so the impact isn't zero. We can squint at
+  the design in a way that suggests that advertising uses_allocator
+  is a bit fishy if the type/allocator combination doesn't actually
+  support exactly that allocator, but keep in mind that in this
+  design, uses-allocator construction supports it anyway. So from
+  that perspective, perhaps it's not so fishy.
+</p>
+<p>
+  Where this matters is that a type that makes some sort of a decision
+  based on whether a template parameter supports allocators may need
+  to use two traits instead of one to make that decision. Our separately
+  proposed pmr::optional is such a type. With the first approach,
+  it needs to use both uses_allocator and __domain_allocator_traits
+  to decide whether to enable allocator support for the parametered
+  type. In the second approach, it needs only uses_allocator. Types
+  like pmr::vector don't care, but types that change their internal
+  storage and API based on this decision do care.
+</p>
+<p>
+  LEWG should decide whether uses_allocator should depend on
+  __domain_allocator_traits. 
+</p>
+
+</body>
+</html>
