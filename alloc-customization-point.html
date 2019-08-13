@@ -69,8 +69,8 @@ Audience: LEWG
 </code></blockquote></pre>
 
 <p>__domain_allocator_traits&lt;class T, class Alloc&gt;::value specifies whether type T supports uses allocator construction with a 
-domain specific allocator DomainAlloc which can be mapped to an object of Alloc type. A specialization is required to provide an Alloc to DomainAlloc 
-rebind function.  </p>
+domain specific allocator DomainAlloc which can be created from an object of Alloc type. A specialization is required to provide an Alloc to DomainAlloc 
+convert function if the specialization's ::value is true.  </p>
 <p>A specialization looks roughly like the following:
 </p>
 
@@ -78,7 +78,7 @@ rebind function.  </p>
 template&lt;&gt;
 struct __domain_allocator_traits&lt;my_value_type, std::pmr::polymorphic_allocator&lt;&gt;&gt; {
     static constexpr bool value = false;
-    static my_alloc* rebind(std::pmr::polymorphic_allocator&lt;&gt; _a);
+    static my_alloc* convert(std::pmr::polymorphic_allocator&lt;&gt; _a);
 };
 </code></blockquote></pre>
 
@@ -93,45 +93,20 @@ struct __domain_allocator_traits&lt;my_value_type, std::pmr::polymorphic_allocat
     std::pmr::polymorphic_allocator&lt;&gt;&gt;::type>
 : BloombergLP::bslma::UsesBslmaAllocator&lt;TYPE&gt;::type
 {
-  static BloombergLP::bslma::Allocator* rebind(std::pmr::polymorphic_allocator&lt;&gt;const& a)
+  static BloombergLP::bslma::Allocator* convert(std::pmr::polymorphic_allocator&lt;&gt;a)
     {
       return dynamic_cast&lt;BloombergLP::bslma::Allocator*&gt;(a.resource());
     }
 }</code></blockquote></pre>
 
-<p>We also thought it would be a good idea to allow an in-class opt-in by providing a static member function
-<tt>domain_alloc_rebind</tt> which is invokable with <tt>_Alloc const&</tt>, where <tt>_Alloc</tt> is the second template
-parameter to __domain_allocator_traits. 
-
-An implementation of a such a detection mechanism would look something like this :
-<pre><blockquote><code>namespace std {
-	 template &lt;class _Tp, class _Alloc, typename =  __void_t&lt;&gt;&gt;
-	struct __domain_allocator_detector
-	: false_type
-	{
-	};
-	
-	template &lt;class _Tp, class _Alloc&gt;
-	struct __domain_allocator_detector&lt; _Tp, _Alloc,
-	__void_t&lt;decltype(_Tp::domain_alloc_rebind)&gt;&gt;
-	: __is_invocable&lt;decltype(_Tp::domain_alloc_rebind), const _Alloc&&gt;::type
-	{
-		using __rT = decltype(_Tp::domain_alloc_rebind);
-		inline static __rT* rebind = &_Tp::domain_alloc_rebind;
-	};
-
-	 template &lt;class _Tp, class _Alloc&gt;
-	 struct __domain_allocator_traits
-	 : __domain_allocator_detector&lt;_Tp, _Alloc&gt; {
-	
-	 };
-}</code></blockquote></pre>
+<p>We also allow for an in-class opt-in by providing a static member function
+<tt>domain_alloc_convert</tt> and a nested type <tt>domain_allocator_conversion_source</tt> (Note: names to be bikeshed by LEWG).
 
 </p>
 
 <p>
   Finally, we modify uses-allocator construction so that
-  it detects the presence of <tt>__domain_allocator_traits&lt;T, Alloc&gt;::rebind</tt>
+  it detects the presence of <tt>__domain_allocator_traits&lt;T, Alloc&gt;::convert</tt>
   , calls it if it's present, and uses the result as an allocator. We assume trailing-allocator convention for a
   type with a domain allocator. This can be elaborated to detect leading-allocator convention vs trailing-allocator convention much like
   types which satisfy the current implementation of <tt>uses_allocator</tt>. 
@@ -186,7 +161,7 @@ An implementation of a such a detection mechanism would look something like this
   </ul>
 </p>
 <p>
-  Orginally we keept uses_allocator separate from __domain_allocator_traits in order to 
+  Orginally we kept uses_allocator separate from __domain_allocator_traits in order to 
   limit the impact of this extension; not modyifying uses_allocator means the set of types 
   for which <tt>uses_allocator</tt> is true remains the same. There already exists a set of types for which 
   uses_allocator is false, but for which uses allocator constuction is well defined.</p>
@@ -206,7 +181,7 @@ An implementation of a such a detection mechanism would look something like this
   
 </p>  On further consideration, we concluded that, if a type can convert from a selected allocator
   to a domain specific allocator, and does so by either specialising the __domain_allocator_traits trait 
-  or providing the domain_alloc_rebind function, then the intentions is to have this type behave as if it 
+  or providing the domain_alloc_convert function, then the intentions is to have this type behave as if it 
   "uses_allocator" and therefore the definition of <tt>uses_allocator</tt> should take such a conversion into account. 
   This allows such a type to get all the benefits of being uses_alloctor, not just the uses_alloctor construction.
 
@@ -223,28 +198,29 @@ An implementation of a such a detection mechanism would look something like this
 <p>
 Insert new section after [allocator.uses.trait]:
 </p>
-
- <h3>Class template domain_allocator_traits</h3>
-<code>namespace std {
+<blockquote>
+<ins> <h3>Class template domain_allocator_traits</h3>
+[1] <code>namespace std {
          template &lt;class T, class Alloc&gt; struct domain_allocator_traits {};
          }
          </code>
-</p></blockquote>
-<p><tt>domain_allocator_traits</tt> provides a means to get uses-allocator construction with allocator types other than the
+</p>
+<p>[2] <tt>domain_allocator_traits</tt> provides means to get uses-allocator construction with allocator types other than the
 type specific allocator. Meets the <i>Cpp17BinaryTypeTrait</i> requirements ([meta.rqmts]). </p>
 
-<p>If <tt>domain_allocator_traits&lt;class T, class Alloc&gt;::value</tt> is <tt>true</tt>,  there will exist a 
-function object member of <tt>domain_allocator_traits</tt> called <tt>rebind</tt> which when invoked with a parameter of type Alloc
-will return type DomainAlloc, and type T will have trailing_allocator convention constructors using DomainAlloc. 
-Otherwise, <tt>domain_allocator_traits&lt;class T, class Alloc&gt;::value</tt> will be <tt>false</tt>. </p>
+<p>[3]  If <tt>domain_allocator_traits&lt;class T, class Alloc&gt;::value</tt> is <tt>true</tt>, static member
+<tt>domain_allocator_traits&lt;class T, class Alloc&gt;::convert</tt> shall be a function object. 
 
-<p>Implementation shall provide a definition of <tt>domain_allocator_traits&lt;class T, class Alloc&gt</tt> that is 
-derived from <tt>true_­type</tt> if there exists a function object member <tt>T::domain_alloc_rebind</tt> for 
-which <tt>is_invocable&lt;decltype(T::domain_alloc_rebind), const _Alloc&&gt;::value</tt> is <tt>true</tt>. </p> 
+ </p>
 
-
+<p>[4] Implementation shall provide a definition of <tt>domain_allocator_traits&lt;class T, class Alloc&gt</tt> that is 
+derived from <tt>true_­type</tt> if there exists a function object member <tt>T::domain_alloc_convert</tt> amd if the 
+<i>qualified-id</i> <tt>T​::​domain_allocator_conversion_source</tt> is valid and denotes a type ([temp.deduct]) . </p> 
+</ins>
+</blockquote>
 
 <p><br/>Modify 20.10.8.1 uses_­allocator trait [allocator.uses.trait]</p>
+<blockquote>
 
 <p><tt>template &lt;class T, class Alloc&gt; struct uses_allocator;</tt>
 <br/>
@@ -262,27 +238,26 @@ have a nested <tt>allocator_­type</tt> but nonetheless can be constructed with 
 <br/>- the last argument of a constructor has type <tt>Alloc</tt>.
 
 </p>
-
+</blockquote>
 
 <p>
 Modify [allocator.uses.construction]/p1
 <blockquote>
  <p>
-<i>Uses-allocator construction</i> with allocator <tt>Alloc</tt> and constructor arguments <tt>args...</tt> refers to the construction
-of an object of type <tt>T</tt> such that <tt>Alloc</tt> is passed to the constructor of T if T uses an allocator type compatible
-with <tt>Alloc</tt><ins>  or <tt>__domain_allocator_traits&lt;T, Alloc&gt;::value</tt> is <tt>true</tt></ins>.
+<i>Uses-allocator construction</i> with allocator <tt>alloc</tt><ins> of type <tt>Alloc</tt></ins> and constructor arguments <tt>args...</tt> 
+refers to the construction of an object of type <tt>T</tt> such that <tt>alloc</tt><ins> or the result of invoking domain_allocator_traits&lt;class T, class Alloc&gt;::convert with 
+<tt>alloc</tt></ins> is passed to the constructor of T if T uses an allocator type compatible with <tt>alloc</tt>.
 </p></blockquote>
 </p>
 
 <p>
 Modify [allocator.uses.construction]/p2
-<blockquote>
+<blockquote><p>
 The following utility functions support <del>three</del><ins>four</ins> conventions for passing <tt>alloc</tt> to a constructor:
- ...<br/>
- <p>
-<ins>- Otherwise, if <tt>__domain_allocator_traits&lt;T, Alloc&gt;::value</tt> is <tt>true</tt>,
-uses-allocator construction invokes T(args..., __domain_allocator_traits&lt;T, Alloc&gt;::rebind(alloc))</ins>
-</p></blockquote>
+<br/>- If <tt>T</tt> does not use an allocator compatible with <tt>alloc</tt>, then <tt>alloc</tt> is ignored.
+<br/><ins>- If <tt>__domain_allocator_traits&lt;T, Alloc&gt;::value</tt> is <tt>true</tt>,
+uses-allocator construction invokes T(args..., __domain_allocator_traits&lt;T, Alloc&gt;::convert(alloc))</ins>
+<br/>- Otherwise...</p></blockquote>
 </p>
 
 <p>
@@ -290,9 +265,11 @@ Modify [allocator.uses.construction]/p5
 <blockquote>
  <p>
  <i>Returns:</i> A tuple value determined as follows:<br/>
- ...<br/>
+- If <tt>uses_­allocator_­v&lt;T, Alloc&gt</tt> is <tt>false</tt> and <tt>is_­constructible_­v&lt;T, Args...&gt;</tt> is <tt>true</tt>, 
+return <tt>forward_­as_­tuple(std::forward&lt;Args&gt;(args)...)</tt>.<br/>
 <ins> - Otherwise, if <tt>__domain_allocator_traits&lt;T, Alloc&gt;::value</tt> is <tt>true</tt>, return <tt>forward_as_tuple(std::forward&lt;Args&gt;(args)..., 
-__domain_allocator_traits&lt;T, Alloc&gt;::rebind(alloc))</tt>.</ins>.
+__domain_allocator_traits&lt;T, Alloc&gt;::convert(alloc))</tt>.</ins>.
+<br/>- Otherwise...
 </p></blockquote>
 </p>
 
