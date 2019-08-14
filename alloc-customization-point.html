@@ -15,6 +15,8 @@
 		padding-top: 1px;
 		padding-bottom: 1px;
 	}
+	tab { padding-left: 4em; }
+    tab2 { padding-left: 2em; }
 	ins {color:#00A000}
 	del {color:#A00000}
 	</style>
@@ -107,9 +109,11 @@ struct __domain_allocator_traits&lt;my_value_type, std::pmr::polymorphic_allocat
 <p>
   Finally, we modify uses-allocator construction so that
   it detects the presence of <tt>__domain_allocator_traits&lt;T, Alloc&gt;::convert</tt>
-  , calls it if it's present, and uses the result as an allocator. We assume trailing-allocator convention for a
-  type with a domain allocator. This can be elaborated to detect leading-allocator convention vs trailing-allocator convention much like
-  types which satisfy the current implementation of <tt>uses_allocator</tt>. 
+  , calls it if it's present, and uses the result as an allocator. As with the current implementation of <tt>uses-allocator</tt>
+  construction, we try leading-allocator convention first and fallback to trailing-allocator convention if unsuccessful. 
+  If the type satisfies <tt>__domain_allocator_traits&lt;T, Alloc&gt;::convert</tt>, we only try  <tt>uses-allocator</tt>
+  construction with the result of <tt>__domain_allocator_traits&lt;T, Alloc&gt;::convert</tt>, there is no fallback to 
+  using original allocator. 
 </p>								   
 
 <h2>An alternative way</h2>
@@ -255,8 +259,10 @@ Modify [allocator.uses.construction]/p2
 <blockquote><p>
 The following utility functions support <del>three</del><ins>four</ins> conventions for passing <tt>alloc</tt> to a constructor:
 <br/>- If <tt>T</tt> does not use an allocator compatible with <tt>alloc</tt>, then <tt>alloc</tt> is ignored.
-<br/><ins>- If <tt>__domain_allocator_traits&lt;T, Alloc&gt;::value</tt> is <tt>true</tt>,
-uses-allocator construction invokes T(args..., __domain_allocator_traits&lt;T, Alloc&gt;::convert(alloc))</ins>
+<br/><ins>- If <tt>__domain_allocator_traits&lt;T, Alloc&gt;::value</tt> is <tt>true</tt> then 
+<br/><tab2> - If T has a constructor invocable as <tt>T(allocator_­arg, domain_alloc, args...)</tt>, where domain_alloc is 
+a result of invoking <tt>__domain_allocator_traits&lt;T, Alloc&gt;::convert</tt> with <tt>alloc</tt>, then uses-allocator construction chooses this constructor form.
+<br/><tab2> - Otherwise, uses_allocator construction choses <tt>T(args..., domain_alloc)</tt>.</ins>
 <br/>- Otherwise...</p></blockquote>
 </p>
 
@@ -267,8 +273,10 @@ Modify [allocator.uses.construction]/p5
  <i>Returns:</i> A tuple value determined as follows:<br/>
 - If <tt>uses_­allocator_­v&lt;T, Alloc&gt</tt> is <tt>false</tt> and <tt>is_­constructible_­v&lt;T, Args...&gt;</tt> is <tt>true</tt>, 
 return <tt>forward_­as_­tuple(std::forward&lt;Args&gt;(args)...)</tt>.<br/>
-<ins> - Otherwise, if <tt>__domain_allocator_traits&lt;T, Alloc&gt;::value</tt> is <tt>true</tt>, return <tt>forward_as_tuple(std::forward&lt;Args&gt;(args)..., 
-__domain_allocator_traits&lt;T, Alloc&gt;::convert(alloc))</tt>.</ins>.
+<ins> - Otherwise, if <tt>__domain_allocator_traits&lt;T, Alloc&gt;::value</tt> is <tt>true</tt> then 
+<br/><tab2> - If <tt>is_­constructible_­v&lt;T, allocator_­arg_­t, const Domainalloc&, Args...&gt; is true, where Domainalloc is the return type of <tt>__domain_allocator_traits&lt;T, Alloc&gt;::convert</tt>
+, return <tt>forward_as_tuple(allocator_arg, __domain_allocator_traits&lt;T, Alloc&gt;::convert(alloc),std::forward&lt;Args&gt;(args)...,)</tt>
+<br/><tab2>- Otherwise, return forward_as_tuple(std::forward&lt;Args&gt;(args)...,__domain_allocator_traits&lt;T, Alloc&gt;::convert(alloc))</tt>.</ins>.
 <br/>- Otherwise...
 </p></blockquote>
 </p>
