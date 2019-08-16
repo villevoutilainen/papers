@@ -15,6 +15,8 @@
 		padding-top: 1px;
 		padding-bottom: 1px;
 	}
+	tab { padding-left: 4em; }
+    tab2 { padding-left: 2em; }
 	ins {color:#00A000}
 	del {color:#A00000}
 	</style>
@@ -63,21 +65,24 @@ Audience: LEWG
 </p>
 
 <pre><blockquote><code>template &lt;class _Tp, class _Alloc&gt;
-  struct __domain_allocator_traits {
+ struct __domain_allocator_traits {
     static constexpr bool value = false;
   };
 </code></blockquote></pre>
 
+<p>__domain_allocator_traits&lt;class T, class Alloc&gt;::value specifies whether type T supports uses allocator construction with a 
+domain specific allocator DomainAlloc which can be created from an object of Alloc type. A specialization is required to provide an Alloc to DomainAlloc 
+convert function if the specialization's ::value is true.  </p>
 <p>A specialization looks roughly like the following:
 </p>
 
 <pre><blockquote><code>namespace std {
 template&lt;&gt;
 struct __domain_allocator_traits&lt;my_value_type, std::pmr::polymorphic_allocator&lt;&gt;&gt; {
-    static constexpr bool value = true;
-    static my_alloc* rebind(std::pmr::polymorphic_allocator&lt;&gt; _a);
+    static constexpr bool value = false;
+    static my_alloc* convert(std::pmr::polymorphic_allocator&lt;&gt; _a);
 };
-}</code></blockquote></pre>
+</code></blockquote></pre>
 
 
 <p>And a real-life specialization looks like the following:
@@ -90,16 +95,25 @@ struct __domain_allocator_traits&lt;my_value_type, std::pmr::polymorphic_allocat
     std::pmr::polymorphic_allocator&lt;&gt;&gt;::type>
 : BloombergLP::bslma::UsesBslmaAllocator&lt;TYPE&gt;::type
 {
-  static BloombergLP::bslma::Allocator* rebind(std::pmr::polymorphic_allocator&lt;&gt; a)
+  static BloombergLP::bslma::Allocator* convert(std::pmr::polymorphic_allocator&lt;&gt;a)
     {
       return dynamic_cast&lt;BloombergLP::bslma::Allocator*&gt;(a.resource());
     }
 }</code></blockquote></pre>
 
+<p>We also allow for an in-class opt-in by providing a static member function
+<tt>domain_alloc_convert</tt> and a nested type <tt>domain_allocator_conversion_source</tt> (Note: names to be bikeshed by LEWG).
+
+</p>
+
 <p>
   Finally, we modify uses-allocator construction so that
-  it detects the presence of __domain_allocator_traits&lt;T, Alloc&gt;::rebind
-  and calls it if it's present, and uses the result as an allocator.
+  it detects the presence of <tt>__domain_allocator_traits&lt;T, Alloc&gt;::convert</tt>
+  , calls it if it's present, and uses the result as an allocator. As with the current implementation of <tt>uses-allocator</tt>
+  construction, we try leading-allocator convention first and fallback to trailing-allocator convention if unsuccessful. 
+  If the type satisfies <tt>__domain_allocator_traits&lt;T, Alloc&gt;::convert</tt>, we only try  <tt>uses-allocator</tt>
+  construction with the result of <tt>__domain_allocator_traits&lt;T, Alloc&gt;::convert</tt>, there is no fallback to 
+  using original allocator. 
 </p>								   
 
 <h2>An alternative way</h2>
@@ -136,25 +150,26 @@ struct __domain_allocator_traits&lt;my_value_type, std::pmr::polymorphic_allocat
   approach.
 </p>
 
-<h2>About the customization points, request for feedback/decision</h2>
-
+<h2>Impact on current usage of uses_allocator</h2>
+<p>
+  To keep the behaviour consistent with uses_allocator_construct, uses_allocator_construction_args,
+  scoped_allocator_adaptor::construct,polymorphic_allocator::construct and tuple need to change
+  to accomodate for a domain specific allocator. 
+</p>
+<h2>Should we modify uses_allocator ? </h2>
 <p>
   We have implemented two approaches:
   <ul>
-    <li>one where uses_allocator is unmodified</li>
-    <li>another wehere uses_allocator depends on __domain_allocator_traits</li>
+    <li>one where uses_allocator is unmodified and does not check __domain_allocator_traits </li>
+    <li>another where uses_allocator depends on __domain_allocator_traits</li>
   </ul>
 </p>
 <p>
-  Keeping the customization points separate is sort of kind of nice; it limits
-  the impact of this extension somewhat. But we need to modify uses_allocator
-  construction anyway, so the impact isn't zero. We can squint at
-  the design in a way that suggests that advertising uses_allocator
-  is a bit fishy if the type/allocator combination doesn't actually
-  support exactly that allocator, but keep in mind that in this
-  design, uses-allocator construction supports it anyway. So from
-  that perspective, perhaps it's not so fishy.
-</p>
+  Orginally we kept uses_allocator separate from __domain_allocator_traits in order to 
+  limit the impact of this extension; not modyifying uses_allocator means the set of types 
+  for which <tt>uses_allocator</tt> is true remains the same. There already exists a set of types for which 
+  uses_allocator is false, but for which uses allocator constuction is well defined.</p>
+
 <p>
   Where this matters is that a type that makes some sort of a decision
   based on whether a template parameter supports allocators may need
@@ -165,10 +180,107 @@ struct __domain_allocator_traits&lt;my_value_type, std::pmr::polymorphic_allocat
   type. In the second approach, it needs only uses_allocator. Types
   like pmr::vector don't care, but types that change their internal
   storage and API based on this decision do care.
+</p>  
+  
+  
+</p>  On further consideration, we concluded that, if a type can convert from a selected allocator
+  to a domain specific allocator, and does so by either specialising the __domain_allocator_traits trait 
+  or providing the domain_alloc_convert function, then the intentions is to have this type behave as if it 
+  "uses_allocator" and therefore the definition of <tt>uses_allocator</tt> should take such a conversion into account. 
+  This allows such a type to get all the benefits of being uses_alloctor, not just the uses_alloctor construction.
+
 </p>
+
 <p>
   LEWG should decide whether uses_allocator should depend on
   __domain_allocator_traits. 
+</p>
+
+<h2>Proposed wording</h2>
+
+
+<p>
+Insert new section after [allocator.uses.trait]:
+</p>
+<blockquote>
+<ins> <h3>Class template domain_allocator_traits</h3>
+[1] <code>namespace std {
+         template &lt;class T, class Alloc&gt; struct domain_allocator_traits {};
+         }
+         </code>
+</p>
+<p>[2] <tt>domain_allocator_traits</tt> provides means to get uses-allocator construction with allocator types other than the
+type specific allocator. Meets the <i>Cpp17BinaryTypeTrait</i> requirements ([meta.rqmts]). </p>
+
+<p>[3]  If <tt>domain_allocator_traits&lt;class T, class Alloc&gt;::value</tt> is <tt>true</tt>, static member
+<tt>domain_allocator_traits&lt;class T, class Alloc&gt;::convert</tt> shall be a function object. 
+
+ </p>
+
+<p>[4] Implementation shall provide a definition of <tt>domain_allocator_traits&lt;class T, class Alloc&gt</tt> that is 
+derived from <tt>true_­type</tt> if there exists a function object member <tt>T::domain_alloc_convert</tt> and if the 
+<i>qualified-id</i> <tt>T​::​domain_allocator_conversion_source</tt> is valid and denotes a type ([temp.deduct]). If
+the implementation provides a definition that is derived from <tt>true_­type</tt>, <tt>domain_allocator_traits&lt;class T, class Alloc&gt;::convert</tt>
+is defined as a static member function object that invokes <tt>T::domain_alloc_convert</tt>. </p> 
+</ins>
+</blockquote>
+
+<p><br/>Modify 20.10.8.1 uses_­allocator trait [allocator.uses.trait]</p>
+<blockquote>
+
+<p><tt>template &lt;class T, class Alloc&gt; struct uses_allocator;</tt>
+<br/>
+<i>#Remarks:</i> Automatically detects whether <tt>T</tt> has a nested allocator_­type that is convertible from <tt>Alloc</tt>. 
+Meets the <i>Cpp17BinaryTypeTrait</i> requirements ([meta.rqmts]). The implementation shall provide a definition that is 
+derived from <tt>true_­type</tt> if<ins>
+<br/> - </ins>the <i>qualified-id</i> <tt>T::allocator_­type</tt> is valid and denotes a type ([temp.deduct]) and 
+<tt>is_­convertible_­v&lt;Alloc, T::allocator_­type&gt; != false</tt>,<ins> or
+<br/> - if <tt>__domain_allocator_traits&lt;T, Alloc&gt;::value</tt> is <tt>true</tt></ins> 
+<br/><br/>
+<del>otherwise it</del><ins>It</ins> shall be derived from <tt>false_­type</tt><ins> otherwise</ins>. 
+A program may specialize this template to derive from <tt>true_­type</tt> for a program-defined type <tt>T</tt> that does not
+have a nested <tt>allocator_­type</tt> but nonetheless can be constructed with an allocator where either:
+<br/>- the first argument of a constructor has type allocator_­arg_­t and the second argument has type <tt>Alloc</tt> or
+<br/>- the last argument of a constructor has type <tt>Alloc</tt>.
+
+</p>
+</blockquote>
+
+<p>
+Modify [allocator.uses.construction]/p1
+<blockquote>
+ <p>
+<i>Uses-allocator construction</i> with allocator <tt>alloc</tt><ins> of type <tt>Alloc</tt></ins> and constructor arguments <tt>args...</tt> 
+refers to the construction of an object of type <tt>T</tt> such that <tt>alloc</tt><ins> or the result of invoking domain_allocator_traits&lt;class T, class Alloc&gt;::convert with 
+<tt>alloc</tt></ins> is passed to the constructor of T if T uses an allocator type compatible with <tt>alloc</tt>.
+</p></blockquote>
+</p>
+
+<p>
+Modify [allocator.uses.construction]/p2
+<blockquote><p>
+The following utility functions support <del>three</del><ins>five</ins> conventions for passing <tt>alloc</tt> to a constructor:
+<br/>- If <tt>T</tt> does not use an allocator compatible with <tt>alloc</tt>, then <tt>alloc</tt> is ignored.
+<br/><ins>- If <tt>__domain_allocator_traits&lt;T, Alloc&gt;::value</tt> is <tt>true</tt> then 
+<br/><tab2> - If T has a constructor invocable as <tt>T(allocator_­arg, domain_alloc, args...)</tt>, where domain_alloc is 
+a result of invoking <tt>__domain_allocator_traits&lt;T, Alloc&gt;::convert</tt> with <tt>alloc</tt>, then uses-allocator construction chooses this constructor form.
+<br/><tab2> - Otherwise, uses_allocator construction choses <tt>T(args..., domain_alloc)</tt>.</ins>
+<br/>- Otherwise...</p></blockquote>
+</p>
+
+<p>
+Modify [allocator.uses.construction]/p5
+<blockquote>
+ <p>
+ <i>Returns:</i> A tuple value determined as follows:<br/>
+- If <tt>uses_­allocator_­v&lt;T, Alloc&gt</tt> is <tt>false</tt> and <tt>is_­constructible_­v&lt;T, Args...&gt;</tt> is <tt>true</tt>, 
+return <tt>forward_­as_­tuple(std::forward&lt;Args&gt;(args)...)</tt>.<br/>
+<ins> - Otherwise, if <tt>__domain_allocator_traits&lt;T, Alloc&gt;::value</tt> is <tt>true</tt> then 
+<br/><tab2> - If <tt>is_­constructible_­v&lt;T, allocator_­arg_­t, const Domainalloc&amp, Args...&gt; is true, where Domainalloc is the return type of <tt>__domain_allocator_traits&lt;T, Alloc&gt;::convert</tt>
+, return <tt>forward_as_tuple(allocator_arg, __domain_allocator_traits&lt;T, Alloc&gt;::convert(alloc),std::forward&lt;Args&gt;(args)...,)</tt>
+<br/><tab2>- Otherwise, return forward_as_tuple(std::forward&lt;Args&gt;(args)...,__domain_allocator_traits&lt;T, Alloc&gt;::convert(alloc))</tt>.</ins>.
+<br/>- Otherwise...
+</p></blockquote>
 </p>
 
 </body>
