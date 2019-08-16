@@ -218,8 +218,10 @@ type specific allocator. Meets the <i>Cpp17BinaryTypeTrait</i> requirements ([me
  </p>
 
 <p>[4] Implementation shall provide a definition of <tt>domain_allocator_traits&lt;class T, class Alloc&gt</tt> that is 
-derived from <tt>true_­type</tt> if there exists a function object member <tt>T::domain_alloc_convert</tt> amd if the 
-<i>qualified-id</i> <tt>T​::​domain_allocator_conversion_source</tt> is valid and denotes a type ([temp.deduct]) . </p> 
+derived from <tt>true_­type</tt> if there exists a function object member <tt>T::domain_alloc_convert</tt> and if the 
+<i>qualified-id</i> <tt>T​::​domain_allocator_conversion_source</tt> is valid and denotes a type ([temp.deduct]). If
+the implementation provides a definition that is derived from <tt>true_­type</tt>, <tt>domain_allocator_traits&lt;class T, class Alloc&gt;::convert</tt>
+is defined as a static member function object that invokes <tt>T::domain_alloc_convert</tt>. </p> 
 </ins>
 </blockquote>
 
@@ -257,7 +259,7 @@ refers to the construction of an object of type <tt>T</tt> such that <tt>alloc</
 <p>
 Modify [allocator.uses.construction]/p2
 <blockquote><p>
-The following utility functions support <del>three</del><ins>four</ins> conventions for passing <tt>alloc</tt> to a constructor:
+The following utility functions support <del>three</del><ins>five</ins> conventions for passing <tt>alloc</tt> to a constructor:
 <br/>- If <tt>T</tt> does not use an allocator compatible with <tt>alloc</tt>, then <tt>alloc</tt> is ignored.
 <br/><ins>- If <tt>__domain_allocator_traits&lt;T, Alloc&gt;::value</tt> is <tt>true</tt> then 
 <br/><tab2> - If T has a constructor invocable as <tt>T(allocator_­arg, domain_alloc, args...)</tt>, where domain_alloc is 
@@ -274,7 +276,7 @@ Modify [allocator.uses.construction]/p5
 - If <tt>uses_­allocator_­v&lt;T, Alloc&gt</tt> is <tt>false</tt> and <tt>is_­constructible_­v&lt;T, Args...&gt;</tt> is <tt>true</tt>, 
 return <tt>forward_­as_­tuple(std::forward&lt;Args&gt;(args)...)</tt>.<br/>
 <ins> - Otherwise, if <tt>__domain_allocator_traits&lt;T, Alloc&gt;::value</tt> is <tt>true</tt> then 
-<br/><tab2> - If <tt>is_­constructible_­v&lt;T, allocator_­arg_­t, const Domainalloc&, Args...&gt; is true, where Domainalloc is the return type of <tt>__domain_allocator_traits&lt;T, Alloc&gt;::convert</tt>
+<br/><tab2> - If <tt>is_­constructible_­v&lt;T, allocator_­arg_­t, const Domainalloc&amp, Args...&gt; is true, where Domainalloc is the return type of <tt>__domain_allocator_traits&lt;T, Alloc&gt;::convert</tt>
 , return <tt>forward_as_tuple(allocator_arg, __domain_allocator_traits&lt;T, Alloc&gt;::convert(alloc),std::forward&lt;Args&gt;(args)...,)</tt>
 <br/><tab2>- Otherwise, return forward_as_tuple(std::forward&lt;Args&gt;(args)...,__domain_allocator_traits&lt;T, Alloc&gt;::convert(alloc))</tt>.</ins>.
 <br/>- Otherwise...
