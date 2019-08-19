@@ -1,0 +1,121 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+	<title>An allocator-aware optional type</title>
+
+	<style>
+	p {text-align:justify}
+	li {text-align:justify}
+	blockquote.note
+	{
+		background-color:#E0E0E0;
+		padding-left: 15px;
+		padding-right: 15px;
+		padding-top: 1px;
+		padding-bottom: 1px;
+	}
+	ins {color:#00A000}
+	del {color:#A00000}
+	</style>
+</head>
+<body>
+
+<address align=right>
+Document number: dxxxx
+<br/>
+Audience: LEWG
+<br/>
+<br/>
+<a href="mailto:ville.voutilainen@gmail.com">Ville Voutilainen</a><br/>
+<a href="mailto:dinka.ranns@gmail.com">Nina Dinka Ranns</a><br/>
+2019-08-19<br/>
+</address>
+<hr/>
+<h1 align=center>An allocator-aware optional type</h1>
+
+<h2>Abstract</h2>
+
+<p>
+  This is a proposal for an allocator-aware optional type. For users
+  that use custom allocators, such a type is currently missing;
+  pair and tuple support allocators, but an optional type is also
+  deemed necessary, because some such users use optional types
+  as container elements. Therefore, an allocator-aware optional
+  type is necessary for the usual scoped-allocator use cases to work.
+</p>
+<p>
+  In this proposal, we propose a separate optional type that
+  works with a polymorphic allocator. The allocator is not
+  part of the type in the sense that it's not a template parameter.
+</p>
+
+<h2>Rationale for a separate type</h2>
+
+<p>
+  An allocator-aware optional needs to store the allocator used
+  for object creation. This is because an optional can be disengaged
+  and re-engaged, so it needs to 'remember' the allocator used
+  when it's re-engaged. Storing an allocator incurs space overhead,
+  so we wish to avoid that overhead for types that are not allocator-aware.
+  Therefore, we are not proposing changing std::optional, but instead
+  adding a new std::pmr::optional that can handle allocator-aware
+  types.
+</p>
+
+<h2>Rationale for using polymorphic allocators only</h2>
+
+<p>
+  The rationale for polymorphic allocators applies here in general.
+  Allocator-aware optionals are interoperable even if they use
+  different concrete allocators, because the concrete allocator
+  doesn't change the type, nor does it change the size of the type.
+</p>
+
+<h2>In general, some remarks about triviality</h2>
+
+<p>
+  We propose std::pmr::optional being an alias template; if the element
+  of the optional is not allocator-aware, the alias template aliases
+  std::optional. Otherwise, it aliases an unspecified type that
+  adds allocator parameters to optional's constructor overload set.
+</p>
+<p>
+  When prototyping this proposal, we realized that an allocator-aware
+  optional is never trivially copyable. Copy constructor and copy
+  assignment always potentially invoke the allocator; these operations
+  are never bitwise copies. Move operations aren't trivial either, because
+  they may also end up doing uses-allocator construction.
+</p>
+<p>
+  This was an implementation-based reason for having an allocator-aware
+  type separate from the usual optional. All the complexity of conditional
+  triviality is in std::optional, and std::pmr::optional's allocator-aware
+  alias target has none of that. The interface of std::optional doesn't
+  have allocator parameters, whereas the interface of the allocator-aware
+  concrete optional always has them available.
+</p>
+
+<h2>Feedback item for LEWG: should the general alias and the
+  concrete allocator-aware optional type both be exposed?</h2>
+
+<p>
+  This proposal doesn't expose the concrete allocator-aware optional
+  type. std::pmr::optional aliases it, and we specify it, but we don't
+  name it. Chances are that some users might want to use it as a named
+  type, in order to reason about their code. Furthermore, it's somewhat
+  questionable whether std::pmr::optional&lt;AllocAware&gt; and
+  std::pmr::optional&lt;AllocUnaware&gt; should even share a name; the APIs
+  are different, the semantics are different.
+</p>
+<p>
+  The reason why we chose to do it the current proposed  way is that
+  practical users   just want one vocabulary type that either does or
+  doesn't do allocators, depending on the element type's properties.
+  The users we've talked to didn't see much value in having a type
+  that is always allocator-aware; instead, it's allocator-aware when
+  it can be, and otherwise not.
+</p>
+
+</body>
+</html>
