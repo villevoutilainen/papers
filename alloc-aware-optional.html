@@ -131,6 +131,334 @@ denotes a type which will construct the contained object with uses_allocator_con
 <tt>[allocator.uses.construction]</tt> with an object of type <tt>polymorphic_allocator&lt;&gt;</tt>. 
 Otherwise, the alias template denotes <tt>std::optional</tt>. </ins></p></blockquote>
 <br/>
+
+
+<p>Modify 20.6.3 Class template optional [optional.optional] </p>
+<p>
+<blockquote>
+// [optional.ctor], constructors
+...
+<ins>
+<br/><tab/> template&lt;class U&gt;
+<br/><tab2/>      explicit(see below) optional(const pmr::<i>alloc-optional</i>&lt;U&gt;&amp;);
+<br/><tab/> template&lt;class U&gt;
+<br/><tab2/>      explicit(see below) optional(pmr::<i>alloc-optional</i>&lt;U&gt;&amp;&amp;);
+</ins>
+...
+// [optional.assign], assignment
+...
+<ins>
+<br/><tab/>   template&lt;class U&gt; optional&amp; operator=(const <i>alloc-optional</i>&amp;);
+<br/><tab/>   template&lt;class U&gt; optional&amp; operator=(<i>alloc-optional</i>&amp;&amp;) noexcept(see below);
+</ins>
+
+</blockquote>
+</p>
+
+<p>Modify 20.6.3.1 Constructors [optional.ctor] </p>
+<p>
+<blockquote>
+<p>
+<br/><code>template&lt;class U&gt; explicit(see below) optional(const optional&lt;U&gt;&amp; v);</code>
+...
+<br/><tab/><i>Remarks:</i> This constructor shall not participate in overload resolution unless
+<br/><tab2/> - <tt>is_­constructible_­v&lt;T, optional&lt;U&gt;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/><ins> - <tt>is_­constructible_­v&lt;T, <i>alloc-optional</i>&lt;U&gt;&amp;&gt;</tt> is <tt>false</tt>, </ins>
+<br/><tab2/> - <tt>is_­constructible_­v&lt;T, optional&lt;U&gt;&amp;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/><ins> - <tt>is_­constructible_­v&lt;T, <i>alloc-optional</i>&lt;U&gt;&amp;&amp;&gt;</tt> is <tt>false</tt>, </ins>
+<br/><tab2/> - <tt>is_­constructible_­v&lt;T, const optional&lt;U&gt;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/><ins> - <tt>is_­constructible_­v&lt;T, const <i>alloc-optional</i>&lt;U&gt;&amp;&gt;</tt> is <tt>false</tt>, </ins>
+<br/><tab2/> - <tt>is_­constructible_­v&lt;T, const optional&lt;U&gt;&amp;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/><ins> - <tt>is_­constructible_­v&lt;T, const <i>alloc-optional</i>&lt;U&gt;&amp;&amp;&gt;</tt> is <tt>false</tt>, </ins>
+<br/><tab2/> - <tt>is_­convertible_­v&lt;optional&lt;U&gt;&amp;, T&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/><ins> - <tt>is_­convertible_­v&lt;<i>alloc-optional</i>&lt;U&gt;&amp;, T&gt;</tt> is <tt>false</tt>, </ins>
+<br/><tab2/> - <tt>is_­convertible_­v&lt;optional&lt;U&gt;&amp;&amp;, T&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/><ins> - <tt>is_­convertible_­v&lt;<i>alloc-optional</i>&lt;U&gt;&amp;&amp;, T&gt;</tt> is <tt>false</tt>, </ins>
+<br/><tab2/> - <tt>is_­convertible_­v&lt;const optional&lt;U&gt;&amp;, T&gt;</tt> is <tt>false</tt>, <del>and</del>
+<br/><tab2/><ins> - <tt>is_­convertible_­v&lt;const <i>alloc-optional</i>&lt;U&gt;&amp;, T&gt;</tt> is <tt>false</tt>, </ins>
+<br/><tab2/> - <tt>is_­convertible_­v&lt;const optional&lt;U&gt;&amp;&amp;, T&gt;</tt> is <tt>false</tt>,<ins>and</ins> 
+<br/><tab2/><ins> - <tt>is_­convertible_­v&lt;const <i>alloc-optional</i>&lt;U&gt;&amp;&amp;, T&gt;</tt> is <tt>false</tt> </ins>
+...
+</p>
+<p>
+<br/><code>template&lt;class U&gt; explicit(see below) optional(optional&lt;U&gt;&amp;&amp; v);</code>
+...
+<br/><tab/><i>Remarks:</i> This constructor shall not participate in overload resolution unless
+<br/><tab2/> - <tt>is_­constructible_­v&lt;T, optional&lt;U&gt;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/><ins> - <tt>is_­constructible_­v&lt;T, <i>alloc-optional</i>&lt;U&gt;&amp;&gt;</tt> is <tt>false</tt>, </ins>
+<br/><tab2/> - <tt>is_­constructible_­v&lt;T, optional&lt;U&gt;&amp;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/><ins> - <tt>is_­constructible_­v&lt;T, <i>alloc-optional</i>&lt;U&gt;&amp;&amp;&gt;</tt> is <tt>false</tt>, </ins>
+<br/><tab2/> - <tt>is_­constructible_­v&lt;T, const optional&lt;U&gt;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/><ins> - <tt>is_­constructible_­v&lt;T, const <i>alloc-optional</i>&lt;U&gt;&amp;&gt;</tt> is <tt>false</tt>, </ins>
+<br/><tab2/> - <tt>is_­constructible_­v&lt;T, const optional&lt;U&gt;&amp;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/><ins> - <tt>is_­constructible_­v&lt;T, const <i>alloc-optional</i>&lt;U&gt;&amp;&amp;&gt;</tt> is <tt>false</tt>, </ins>
+<br/><tab2/> - <tt>is_­convertible_­v&lt;optional&lt;U&gt;&amp;, T&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/><ins> - <tt>is_­convertible_­v&lt;<i>alloc-optional</i>&lt;U&gt;&amp;, T&gt;</tt> is <tt>false</tt>, </ins>
+<br/><tab2/> - <tt>is_­convertible_­v&lt;optional&lt;U&gt;&amp;&amp;, T&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/><ins> - <tt>is_­convertible_­v&lt;<i>alloc-optional</i>&lt;U&gt;&amp;&amp;, T&gt;</tt> is <tt>false</tt>, </ins>
+<br/><tab2/> - <tt>is_­convertible_­v&lt;const optional&lt;U&gt;&amp;, T&gt;</tt> is <tt>false</tt>, <del>and</del>
+<br/><tab2/><ins> - <tt>is_­convertible_­v&lt;const <i>alloc-optional</i>&lt;U&gt;&amp;, T&gt;</tt> is <tt>false</tt>, </ins>
+<br/><tab2/> - <tt>is_­convertible_­v&lt;const optional&lt;U&gt;&amp;&amp;, T&gt;</tt> is <tt>false</tt>, <ins>and</ins> 
+<br/><tab2/><ins> - <tt>is_­convertible_­v&lt;const <i>alloc-optional</i>&lt;U&gt;&amp;&amp;, T&gt;</tt> is <tt>false</tt> </ins>
+...
+</p>
+...
+<p>
+<ins>
+<br/>
+<br/><code>template&lt;class U&gt; explicit(see below) optional(const <i>alloc-optional</i>&lt;U&gt;&amp; v);</code>
+<br/><tab/><i>Effects:</i> If <tt>rhs</tt> contains a value, initializes the contained value 
+ as if direct-non-list-initializing an object of type <tt>T</tt> with the expression <tt>*rhs</tt>.
+<br/><tab/><i>Ensures:</i> <tt>bool(rhs) == bool(*this)</tt>.
+<br/><tab/><i>Throws:</i> Any exception thrown by the selected constructor of <tt>T</tt>.
+<br/><tab/><i>Remarks:</i> This constructor shall not participate in overload resolution unless
+<br/><tab2/> - <tt>is_­constructible_­v&lt;T, const U&amp;&gt;</tt> is <tt>true</tt>, 
+<br/><tab2/> - <tt>is_same&lt;T,U&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_­constructible_­v&lt;T, optional&lt;U&gt;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_­constructible_­v&lt;T, <i>alloc-optional</i>&lt;U&gt;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_­constructible_­v&lt;T, optional&lt;U&gt;&amp;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_­constructible_­v&lt;T, <i>alloc-optional</i>&lt;U&gt;&amp;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_­constructible_­v&lt;T, const optional&lt;U&gt;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_­constructible_­v&lt;T, const <i>alloc-optional</i>&lt;U&gt;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_­constructible_­v&lt;T, const optional&lt;U&gt;&amp;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_­constructible_­v&lt;T, const <i>alloc-optional</i>&lt;U&gt;&amp;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_­convertible_­v&lt;optional&lt;U&gt;&amp;, T&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_­convertible_­v&lt;<i>alloc-optional</i>&lt;U&gt;&amp;, T&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_­convertible_­v&lt;optional&lt;U&gt;&amp;&amp;, T&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_­convertible_­v&lt;<i>alloc-optional</i>&lt;U&gt;&amp;&amp;, T&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_­convertible_­v&lt;const optional&lt;U&gt;&amp;, T&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_­convertible_­v&lt;const <i>alloc-optional</i>&lt;U&gt;&amp;, T&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_­convertible_­v&lt;const optional&lt;U&gt;&amp;&amp;, T&gt;</tt> is <tt>false</tt>, and
+<br/><tab2/> - <tt>is_­convertible_­v&lt;const <i>alloc-optional</i>&lt;U&gt;&amp;&amp;, T&gt;</tt> is <tt>false</tt> 
+<br/><tab/>The expression inside <tt>explicit</tt> is equivalent to:
+<br/><tab2/><tt>!is_convertible_v&lt;const U&amp;, T&gt;</tt> 
+<br/>     
+
+<br/>
+<br/><code>template&lt;class U&gt; explicit(see below) optional(<i>alloc-optional</i>&lt;U&gt;&amp;&amp; v);</code>
+<br/><tab/><i>Effects:</i> If <tt>rhs</tt> contains a value, initializes the contained value 
+ as if direct-non-list-initializing an object of type <tt>T</tt> with the expression <tt>std​::​move(*rhs)</tt>.
+<tt>std​::​move(*rhs)</tt> as the constructor argument. <tt>bool(rhs)</tt> is unchanged.
+<br/><tab/><i>Ensures:</i> <tt>bool(rhs) == bool(*this)</tt>.
+<br/><tab/><i>Throws:</i> Any exception thrown by the selected constructor of <tt>T</tt>.
+<br/><tab/><i>Remarks:</i> This constructor shall not participate in overload resolution unless
+<br/><tab2/> - <tt>is_­constructible_­v&lt;T,U&amp;&amp;&gt;</tt> is <tt>true</tt>, 
+<br/><tab2/> - <tt>is_same&lt;T,U&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_­constructible_­v&lt;T, optional&lt;U&gt;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_­constructible_­v&lt;T, <i>alloc-optional</i>&lt;U&gt;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_­constructible_­v&lt;T, optional&lt;U&gt;&amp;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_­constructible_­v&lt;T, <i>alloc-optional</i>&lt;U&gt;&amp;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_­constructible_­v&lt;T, const optional&lt;U&gt;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_­constructible_­v&lt;T, const <i>alloc-optional</i>&lt;U&gt;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_­constructible_­v&lt;T, const optional&lt;U&gt;&amp;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_­constructible_­v&lt;T, const <i>alloc-optional</i>&lt;U&gt;&amp;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_­convertible_­v&lt;optional&lt;U&gt;&amp;, T&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_­convertible_­v&lt;<i>alloc-optional</i>&lt;U&gt;&amp;, T&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_­convertible_­v&lt;optional&lt;U&gt;&amp;&amp;, T&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_­convertible_­v&lt;<i>alloc-optional</i>&lt;U&gt;&amp;&amp;, T&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_­convertible_­v&lt;const optional&lt;U&gt;&amp;, T&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_­convertible_­v&lt;const <i>alloc-optional</i>&lt;U&gt;&amp;, T&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_­convertible_­v&lt;const optional&lt;U&gt;&amp;&amp;, T&gt;</tt> is <tt>false</tt>, and
+<br/><tab2/> - <tt>is_­convertible_­v&lt;const <i>alloc-optional</i>&lt;U&gt;&amp;&amp;, T&gt;</tt> is <tt>false</tt> 
+<br/><tab/>The expression inside <tt>explicit</tt> is equivalent to:
+<br/><tab2/><tt>!is_convertible_v&lt;U, T&gt;</tt> 
+<br/>    
+</p>
+</ins></blockquote>
+
+<p>Modify 20.6.3.3 Assignment [optional.assign] </p>
+<p>
+<blockquote>
+...
+<br/><tt>template&lt;class U&gt; optional&amp; operator=(const optional&lt;U&gt;&amp; rhs);</tt>
+...
+<br/><tab/><i>Remarks:</i> ...
+This operator shall not participate in overload resolution unless
+<br/><tab2/> - <tt>is_­constructible_­v&lt;T, const U&amp;&gt;</tt> is <tt>true</tt>, 
+<br/><tab2/> - <tt>is_assignable&lt;T&amp;, const U&amp;&gt;</tt> is <tt>true</tt>,
+<br/><tab2/> - <tt>is_­constructible_­v&lt;T, optional&lt;U&gt;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/><ins> - <tt>is_­constructible_­v&lt;T, <i>alloc-optional</i>&lt;U&gt;&amp;&gt;</tt> is <tt>false</tt>, </ins>
+<br/><tab2/> - <tt>is_­constructible_­v&lt;T, optional&lt;U&gt;&amp;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/><ins>  - <tt>is_­constructible_­v&lt;T, <i>alloc-optional</i>&lt;U&gt;&amp;&amp;&gt;</tt> is <tt>false</tt>, </ins>
+<br/><tab2/> - <tt>is_­constructible_­v&lt;T, const optional&lt;U&gt;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/><ins>  - <tt>is_­constructible_­v&lt;T, const <i>alloc-optional</i>&lt;U&gt;&amp;&gt;</tt> is <tt>false</tt>, </ins>
+<br/><tab2/> - <tt>is_­constructible_­v&lt;T, const optional&lt;U&gt;&amp;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/><ins>  - <tt>is_­constructible_­v&lt;T, const <i>alloc-optional</i>&lt;U&gt;&amp;&amp;&gt;</tt> is <tt>false</tt>, </ins>
+<br/><tab2/> - <tt>is_­convertible_­v&lt;optional&lt;U&gt;&amp;, T&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/><ins>  - <tt>is_­convertible_­v&lt;<i>alloc-optional</i>&lt;U&gt;&amp;, T&gt;</tt> is <tt>false</tt>, </ins>
+<br/><tab2/> - <tt>is_­convertible_­v&lt;optional&lt;U&gt;&amp;&amp;, T&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/><ins>  - <tt>is_­convertible_­v&lt;<i>alloc-optional</i>&lt;U&gt;&amp;&amp;, T&gt;</tt> is <tt>false</tt>, </ins>
+<br/><tab2/> - <tt>is_­convertible_­v&lt;const optional&lt;U&gt;&amp;, T&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/><ins>  - <tt>is_­convertible_­v&lt;const <i>alloc-optional</i>&lt;U&gt;&amp;, T&gt;</tt> is <tt>false</tt>, </ins>
+<br/><tab2/> - <tt>is_­convertible_­v&lt;const optional&lt;U&gt;&amp;&amp;, T&gt;</tt> is <tt>false</tt>,
+<br/><tab2/><ins>  - <tt>is_­convertible_­v&lt;const <i>alloc-optional</i>&lt;U&gt;&amp;&amp;, T&gt;</tt> is <tt>false</tt>, </ins>
+<br/><tab2/> - <tt>is_assignable_v&lt;T&amp;, optional&lt;U&gt;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/><ins>  - <tt>is_assignable_v&lt;T&amp;, <i>alloc-optional</i>&lt;U&gt;&amp;&gt;</tt> is <tt>false</tt>, </ins>
+<br/><tab2/> - <tt>is_assignable_v&lt;T&amp;, optional&lt;U&gt;&amp;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/><ins>  - <tt>is_assignable_v&lt;T&amp;, <i>alloc-optional</i>&lt;U&gt;&amp;&amp;&gt;</tt> is <tt>false</tt>, </ins>
+<br/><tab2/> - <tt>is_assignable_v&lt;T&amp;, const optional&lt;U&gt;&amp;&gt;</tt> is <tt>false</tt>, <del>and</del>
+<br/><tab2/><ins>  - <tt>is_assignable_v&lt;T&amp;, const <i>alloc-optional</i>&lt;U&gt;&amp;&gt;</tt> is <tt>false</tt>, </ins>
+<br/><tab2/> - <tt>is_assignable_v&lt;T&amp;, const optional&lt;U&gt;&amp;&amp;&gt;</tt> is <tt>false</tt>,<ins>and</ins> 
+<br/><tab2/><ins>  - <tt>is_assignable_v&lt;T&amp;, const <i>alloc-optional</i>&lt;U&gt;&amp;&amp;&gt;</tt> is <tt>false</tt> </ins>
+</blockquote>
+</p>
+<p>
+<blockquote>
+
+<br/><tt>template&lt;class U&gt; optional&amp; operator=(optional&lt;U&gt;&amp;&amp; rhs);</tt>
+...
+<br/><tab/><i>Remarks:</i> ...
+This operator shall not participate in overload resolution unless
+<br/><tab2/> - <tt>is_­constructible_­v&lt;T, const U&amp;&gt;</tt> is <tt>true</tt>, 
+<br/><tab2/> - <tt>is_assignable&lt;T&amp;, const U&amp;&gt;</tt> is <tt>true</tt>,
+<br/><tab2/> - <tt>is_­constructible_­v&lt;T, optional&lt;U&gt;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/><ins> - <tt>is_­constructible_­v&lt;T, <i>alloc-optional</i>&lt;U&gt;&amp;&gt;</tt> is <tt>false</tt>, </ins>
+<br/><tab2/> - <tt>is_­constructible_­v&lt;T, optional&lt;U&gt;&amp;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/><ins>  - <tt>is_­constructible_­v&lt;T, <i>alloc-optional</i>&lt;U&gt;&amp;&amp;&gt;</tt> is <tt>false</tt>, </ins>
+<br/><tab2/> - <tt>is_­constructible_­v&lt;T, const optional&lt;U&gt;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/><ins>  - <tt>is_­constructible_­v&lt;T, const <i>alloc-optional</i>&lt;U&gt;&amp;&gt;</tt> is <tt>false</tt>, </ins>
+<br/><tab2/> - <tt>is_­constructible_­v&lt;T, const optional&lt;U&gt;&amp;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/><ins>  - <tt>is_­constructible_­v&lt;T, const <i>alloc-optional</i>&lt;U&gt;&amp;&amp;&gt;</tt> is <tt>false</tt>, </ins>
+<br/><tab2/> - <tt>is_­convertible_­v&lt;optional&lt;U&gt;&amp;, T&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/><ins>  - <tt>is_­convertible_­v&lt;<i>alloc-optional</i>&lt;U&gt;&amp;, T&gt;</tt> is <tt>false</tt>, </ins>
+<br/><tab2/> - <tt>is_­convertible_­v&lt;optional&lt;U&gt;&amp;&amp;, T&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/><ins>  - <tt>is_­convertible_­v&lt;<i>alloc-optional</i>&lt;U&gt;&amp;&amp;, T&gt;</tt> is <tt>false</tt>, </ins>
+<br/><tab2/> - <tt>is_­convertible_­v&lt;const optional&lt;U&gt;&amp;, T&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/><ins>  - <tt>is_­convertible_­v&lt;const <i>alloc-optional</i>&lt;U&gt;&amp;, T&gt;</tt> is <tt>false</tt>, </ins>
+<br/><tab2/> - <tt>is_­convertible_­v&lt;const optional&lt;U&gt;&amp;&amp;, T&gt;</tt> is <tt>false</tt>,
+<br/><tab2/><ins>  - <tt>is_­convertible_­v&lt;const <i>alloc-optional</i>&lt;U&gt;&amp;&amp;, T&gt;</tt> is <tt>false</tt>, </ins>
+<br/><tab2/> - <tt>is_assignable_v&lt;T&amp;, optional&lt;U&gt;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/><ins>  - <tt>is_assignable_v&lt;T&amp;, <i>alloc-optional</i>&lt;U&gt;&amp;&gt;</tt> is <tt>false</tt>, </ins>
+<br/><tab2/> - <tt>is_assignable_v&lt;T&amp;, optional&lt;U&gt;&amp;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/><ins>  - <tt>is_assignable_v&lt;T&amp;, <i>alloc-optional</i>&lt;U&gt;&amp;&amp;&gt;</tt> is <tt>false</tt>, </ins>
+<br/><tab2/> - <tt>is_assignable_v&lt;T&amp;, const optional&lt;U&gt;&amp;&gt;</tt> is <tt>false</tt>, <del>and</del>
+<br/><tab2/><ins>  - <tt>is_assignable_v&lt;T&amp;, const <i>alloc-optional</i>&lt;U&gt;&amp;&gt;</tt> is <tt>false</tt>, </ins>
+<br/><tab2/> - <tt>is_assignable_v&lt;T&amp;, const optional&lt;U&gt;&amp;&amp;&gt;</tt> is <tt>false</tt>,<ins>and</ins> 
+<br/><tab2/><ins>  - <tt>is_assignable_v&lt;T&amp;, const <i>alloc-optional</i>&lt;U&gt;&amp;&amp;&gt;</tt> is <tt>false</tt> </ins>
+</blockquote>
+</p>
+
+<blockquote><ins>
+<br/>
+<br/><tt>template&lt;class U&gt; optional&amp; operator=(const <i>alloc-optional</i>&lt;U&gt;&amp; rhs);</tt>
+<br/><tab/><i>Effects:</i> See Table
+<blockquote>
+<table border="1">
+<caption><ins>Table &mdash; <tt>optional operator=(const <i>alloc-optional</i>&lt;U&gt;&amp;)</tt> effects</ins></caption>
+<tr>
+<th></th>
+<th><ins><tt>*this</tt> contains a value</ins></th>
+<th><ins><tt>*this</tt> does not contain a value</ins></th>
+</tr>
+<tr>
+<td><ins><tt>rhs</tt> contains a value</ins></td>
+<td><ins>assigns <tt>*rhs</tt> to the contained value</ins></td>
+<td><ins>initializes the contained value as if direct-non-list-initializing an object of type <tt>T</tt> with <tt>*rhs</tt>.</ins></td>
+</tr>
+<tr>
+<td><ins><tt>rhs</tt> does not contain a value</ins></td>
+<td><ins>destroys the contained value by calling <tt>val->T::~T()</tt></ins></td>
+<td><ins>no effect</ins></td>
+</tr>
+</table></blockquote>
+<br/><tab/><i>Returns:</i> <tt>*this</tt>.
+<br/><tab/><i>Ensures:</i> <tt>bool(rhs) == bool(*this)</tt>.
+<br/><tab/><i>Remarks:</i>  If any exception is thrown, the result of the expression <tt>bool(*this)</tt>
+remains unchanged. If an exception is thrown during the call to <tt>T</tt>'s constructor, 
+the state of <tt>*rhs.val</tt> is determined by the exception safety guarantee of <tt>T</tt>'s constructor. 
+If an exception is thrown during the call to <tt>T</tt>'s assignment, the state of <tt>*val</tt> and <tt>*rhs.val</tt> is 
+determined by the exception safety guarantee of <tt>T</tt>'s assignment.
+This operator shall not participate in overload resolution unless
+<br/><tab2/> - <tt>is_same&lt;T,U&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_­constructible_­v&lt;T, const U&amp;&gt;</tt> is <tt>true</tt>, 
+<br/><tab2/> - <tt>is_assignable&lt;T&amp;, const U&amp;&gt;</tt> is <tt>true</tt>,
+<br/><tab2/> - <tt>is_­constructible_­v&lt;T, optional&lt;U&gt;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_­constructible_­v&lt;T, <i>alloc-optional</i>&lt;U&gt;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_­constructible_­v&lt;T, optional&lt;U&gt;&amp;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_­constructible_­v&lt;T, <i>alloc-optional</i>&lt;U&gt;&amp;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_­constructible_­v&lt;T, const optional&lt;U&gt;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_­constructible_­v&lt;T, const <i>alloc-optional</i>&lt;U&gt;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_­constructible_­v&lt;T, const optional&lt;U&gt;&amp;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_­constructible_­v&lt;T, const <i>alloc-optional</i>&lt;U&gt;&amp;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_­convertible_­v&lt;const U&amp;, T&gt;</tt> is <tt>true</tt>, 
+<br/><tab2/> - <tt>is_­convertible_­v&lt;optional&lt;U&gt;&amp;, T&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_­convertible_­v&lt;<i>alloc-optional</i>&lt;U&gt;&amp;, T&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_­convertible_­v&lt;optional&lt;U&gt;&amp;&amp;, T&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_­convertible_­v&lt;<i>alloc-optional</i>&lt;U&gt;&amp;&amp;, T&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_­convertible_­v&lt;const optional&lt;U&gt;&amp;, T&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_­convertible_­v&lt;const <i>alloc-optional</i>&lt;U&gt;&amp;, T&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_­convertible_­v&lt;const optional&lt;U&gt;&amp;&amp;, T&gt;</tt> is <tt>false</tt>,
+<br/><tab2/> - <tt>is_­convertible_­v&lt;const <i>alloc-optional</i>&lt;U&gt;&amp;&amp;, T&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_assignable_v&lt;T&amp;, optional&lt;U&gt;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_assignable_v&lt;T&amp;, <i>alloc-optional</i>&lt;U&gt;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_assignable_v&lt;T&amp;, optional&lt;U&gt;&amp;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_assignable_v&lt;T&amp;, <i>alloc-optional</i>&lt;U&gt;&amp;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_assignable_v&lt;T&amp;, const optional&lt;U&gt;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_assignable_v&lt;T&amp;, const <i>alloc-optional</i>&lt;U&gt;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_assignable_v&lt;T&amp;, const optional&lt;U&gt;&amp;&amp;&gt;</tt> is <tt>false</tt>, and
+<br/><tab2/> - <tt>is_assignable_v&lt;T&amp;, const <i>alloc-optional</i>&lt;U&gt;&amp;&amp;&gt;</tt> is <tt>false</tt>
+
+<br/>
+<br/><tt>template&lt;class U&gt; optional&amp; operator=(<i>alloc-optional</i>&lt;U&gt;&amp;&amp; rhs);</tt>
+<br/><tab/><i>Effects:</i> See Table
+<blockquote>
+<table border="1">
+<caption><ins>Table &mdash; <tt>optional operator=(<i>alloc-optional</i>&lt;U&gt;&amp;&amp;)</tt> effects</ins></caption>
+<tr>
+<th></th>
+<th><ins><tt>*this</tt> contains a value</ins></th>
+<th><ins><tt>*this</tt> does not contain a value</ins></th>
+</tr>
+<tr>
+<td><ins><tt>rhs</tt> contains a value</ins></td>
+<td><ins>assigns <tt>*rhs</tt> to the contained value</ins></td>
+<td><ins>initializes the contained value as if direct-non-list-initializing an object of type <tt>T</tt> with <tt>std​::​move(*rhs)</tt></ins></td>
+</tr>
+<tr>
+<td><ins><tt>rhs</tt> does not contain a value</ins></td>
+<td><ins>destroys the contained value by calling <tt>val->T::~T()</tt></ins></td>
+<td><ins>no effect</ins></td>
+</tr>
+</table></blockquote>
+<br/><tab/><i>Returns:</i> <tt>*this</tt>.
+<br/><tab/><i>Ensures:</i> <tt>bool(rhs) == bool(*this)</tt>.
+<br/><tab/><i>Remarks:</i>   If any exception is thrown, the result of the expression <tt>bool(*this)</tt>
+remains unchanged. If an exception is thrown during the call to <tt>T</tt>'s constructor, 
+the state of <tt>*rhs.val</tt> is determined by the exception safety guarantee of <tt>T</tt>'s constructor. 
+If an exception is thrown during the call to <tt>T</tt>'s assignment, the state of <tt>*val</tt> and <tt>*rhs.val</tt> is 
+determined by the exception safety guarantee of <tt>T</tt>'s assignment.
+This operator shall not participate in overload resolution unless
+<br/><tab2/> - <tt>is_­constructible_­v&lt;T, const U&amp;&gt;</tt> is <tt>true</tt>, 
+<br/><tab2/> - <tt>is_assignable&lt;T&amp;, const U&amp;&gt;</tt> is <tt>true</tt>,
+<br/><tab2/> - <tt>is_­constructible_­v&lt;T, std::optional&lt;U&gt;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_­constructible_­v&lt;T, <i>alloc-optional</i>&lt;U&gt;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_­constructible_­v&lt;T, std::optional&lt;U&gt;&amp;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_­constructible_­v&lt;T, <i>alloc-optional</i>&lt;U&gt;&amp;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_­constructible_­v&lt;T, const std::optional&lt;U&gt;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_­constructible_­v&lt;T, const <i>alloc-optional</i>&lt;U&gt;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_­constructible_­v&lt;T, const std::optional&lt;U&gt;&amp;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_­constructible_­v&lt;T, const <i>alloc-optional</i>&lt;U&gt;&amp;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_­convertible_­v&lt;const U&amp;, T&gt;</tt> is <tt>true</tt>, 
+<br/><tab2/> - <tt>is_­convertible_­v&lt;std::optional&lt;U&gt;&amp;, T&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_­convertible_­v&lt;<i>alloc-optional</i>&lt;U&gt;&amp;, T&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_­convertible_­v&lt;std::optional&lt;U&gt;&amp;&amp;, T&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_­convertible_­v&lt;<i>alloc-optional</i>&lt;U&gt;&amp;&amp;, T&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_­convertible_­v&lt;const std::optional&lt;U&gt;&amp;, T&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_­convertible_­v&lt;const <i>alloc-optional</i>&lt;U&gt;&amp;, T&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_­convertible_­v&lt;const std::optional&lt;U&gt;&amp;&amp;, T&gt;</tt> is <tt>false</tt>,
+<br/><tab2/> - <tt>is_­convertible_­v&lt;const <i>alloc-optional</i>&lt;U&gt;&amp;&amp;, T&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_assignable_v&lt;T&amp;, std::optional&lt;U&gt;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_assignable_v&lt;T&amp;, <i>alloc-optional</i>&lt;U&gt;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_assignable_v&lt;T&amp;, std::optional&lt;U&gt;&amp;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_assignable_v&lt;T&amp;, <i>alloc-optional</i>&lt;U&gt;&amp;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_assignable_v&lt;T&amp;, const std::optional&lt;U&gt;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_assignable_v&lt;T&amp;, const <i>alloc-optional</i>&lt;U&gt;&amp;&gt;</tt> is <tt>false</tt>, 
+<br/><tab2/> - <tt>is_assignable_v&lt;T&amp;, const std::optional&lt;U&gt;&amp;&amp;&gt;</tt> is <tt>false</tt>, and
+<br/><tab2/> - <tt>is_assignable_v&lt;T&amp;, const <i>alloc-optional</i>&lt;U&gt;&amp;&amp;&gt;</tt> is <tt>false</tt>
+
+
+</ins></blockquote>
+
 <p>
 Insert new sections after 20.6.3 Class template optional [optional.optional]
 </p>
@@ -433,7 +761,6 @@ If <tt>rhs</tt> contains a value, initializes the contained value with uses-allo
 <br/><tab2/> - <tt>is_­constructible_­v&lt;T, const <i>alloc-optional</i>&lt;U&gt;&amp;&gt;</tt> is <tt>false</tt>, 
 <br/><tab2/> - <tt>is_­constructible_­v&lt;T, const std::optional&lt;U&gt;&amp;&amp;&gt;</tt> is <tt>false</tt>, 
 <br/><tab2/> - <tt>is_­constructible_­v&lt;T, const <i>alloc-optional</i>&lt;U&gt;&amp;&amp;&gt;</tt> is <tt>false</tt>, 
-<br/><tab2/> - <tt>is_­convertible_­v&lt;const U&amp;, T&gt;</tt> is <tt>true</tt>, 
 <br/><tab2/> - <tt>is_­convertible_­v&lt;std::optional&lt;U&gt;&amp;, T&gt;</tt> is <tt>false</tt>, 
 <br/><tab2/> - <tt>is_­convertible_­v&lt;<i>alloc-optional</i>&lt;U&gt;&amp;, T&gt;</tt> is <tt>false</tt>, 
 <br/><tab2/> - <tt>is_­convertible_­v&lt;std::optional&lt;U&gt;&amp;&amp;, T&gt;</tt> is <tt>false</tt>, 
@@ -465,7 +792,6 @@ If <tt>rhs</tt> contains a value, initializes the contained value with uses-allo
 <br/><tab2/> - <tt>is_­constructible_­v&lt;T, const <i>alloc-optional</i>&lt;U&gt;&amp;&gt;</tt> is <tt>false</tt>, 
 <br/><tab2/> - <tt>is_­constructible_­v&lt;T, const std::optional&lt;U&gt;&amp;&amp;&gt;</tt> is <tt>false</tt>, 
 <br/><tab2/> - <tt>is_­constructible_­v&lt;T, const <i>alloc-optional</i>&lt;U&gt;&amp;&amp;&gt;</tt> is <tt>false</tt>, 
-<br/><tab2/> - <tt>is_­convertible_­v&lt;const U&amp;, T&gt;</tt> is <tt>true</tt>, 
 <br/><tab2/> - <tt>is_­convertible_­v&lt;std::optional&lt;U&gt;&amp;, T&gt;</tt> is <tt>false</tt>, 
 <br/><tab2/> - <tt>is_­convertible_­v&lt;<i>alloc-optional</i>&lt;U&gt;&amp;, T&gt;</tt> is <tt>false</tt>, 
 <br/><tab2/> - <tt>is_­convertible_­v&lt;std::optional&lt;U&gt;&amp;&amp;, T&gt;</tt> is <tt>false</tt>, 
@@ -495,7 +821,6 @@ If <tt>rhs</tt> contains a value, initializes the contained value with uses-allo
 <br/><tab2/> - <tt>is_­constructible_­v&lt;T, const <i>alloc-optional</i>&lt;U&gt;&amp;&gt;</tt> is <tt>false</tt>, 
 <br/><tab2/> - <tt>is_­constructible_­v&lt;T, const std::optional&lt;U&gt;&amp;&amp;&gt;</tt> is <tt>false</tt>, 
 <br/><tab2/> - <tt>is_­constructible_­v&lt;T, const <i>alloc-optional</i>&lt;U&gt;&amp;&amp;&gt;</tt> is <tt>false</tt>, 
-<br/><tab2/> - <tt>is_­convertible_­v&lt;const U&amp;, T&gt;</tt> is <tt>true</tt>, 
 <br/><tab2/> - <tt>is_­convertible_­v&lt;std::optional&lt;U&gt;&amp;, T&gt;</tt> is <tt>false</tt>, 
 <br/><tab2/> - <tt>is_­convertible_­v&lt;<i>alloc-optional</i>&lt;U&gt;&amp;, T&gt;</tt> is <tt>false</tt>, 
 <br/><tab2/> - <tt>is_­convertible_­v&lt;std::optional&lt;U&gt;&amp;&amp;, T&gt;</tt> is <tt>false</tt>, 
@@ -526,7 +851,6 @@ If <tt>rhs</tt> contains a value, initializes the contained value with uses-allo
 <br/><tab2/> - <tt>is_­constructible_­v&lt;T, const <i>alloc-optional</i>&lt;U&gt;&amp;&gt;</tt> is <tt>false</tt>, 
 <br/><tab2/> - <tt>is_­constructible_­v&lt;T, const std::optional&lt;U&gt;&amp;&amp;&gt;</tt> is <tt>false</tt>, 
 <br/><tab2/> - <tt>is_­constructible_­v&lt;T, const <i>alloc-optional</i>&lt;U&gt;&amp;&amp;&gt;</tt> is <tt>false</tt>, 
-<br/><tab2/> - <tt>is_­convertible_­v&lt;const U&amp;, T&gt;</tt> is <tt>true</tt>, 
 <br/><tab2/> - <tt>is_­convertible_­v&lt;std::optional&lt;U&gt;&amp;, T&gt;</tt> is <tt>false</tt>, 
 <br/><tab2/> - <tt>is_­convertible_­v&lt;<i>alloc-optional</i>&lt;U&gt;&amp;, T&gt;</tt> is <tt>false</tt>, 
 <br/><tab2/> - <tt>is_­convertible_­v&lt;std::optional&lt;U&gt;&amp;&amp;, T&gt;</tt> is <tt>false</tt>, 
