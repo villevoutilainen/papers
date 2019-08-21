@@ -301,7 +301,7 @@ namespace std::pmr {
 <br/><tab2/>    template&lt;class U, class... Args&gt; T&amp; emplace(initializer_list&lt;U&gt;, Args&amp;&amp;...);
 <br/>
 <br/><tab2/>    // [<i>alloc-optional</i>.swap], swap
-<br/><tab2/>    void swap(<i>alloc-optional</i>&amp; noexcept(see below);
+<br/><tab2/>    void swap(<i>alloc-optional</i>&amp;) noexcept(see below);
 <br/>
 <br/><tab2/>    // [<i>alloc-optional</i>.observe], observers
 <br/><tab2/>    const T* operator-&gt;() const;
@@ -891,6 +891,113 @@ with uses-allocator construction and <tt>il, std​::​forward&lt;Args&gt;(args
 <tt>*this</tt> does not contain a value, and the previous <tt>*val</tt> (if any) has been destroyed. 
 </ins></blockquote>
 
+
+<p><h4><ins> Swap [<i>alloc-optional</i>.swap]</ins></h4></p>
+<blockquote><ins>
+
+<br/><tt>void swap(<i>alloc-optional</i>&amp; rhs);</tt>
+<br/><tab/><i>Requires:</i> Lvalues of type <tt>T</tt> shall be swappable and <tt>is_­move_­constructible_­v&lt;T&gt;</tt> is <tt>true</tt>.
+<br/><tab/><i>Effects:</i> See Table x
+<blockquote><table border="1">
+<caption><ins>Table x &mdash; <tt>swap(<i>alloc-optional</i>&amp;)</tt> effects</ins></caption>
+<tr>
+<th></th>
+<th><ins><tt>*this</tt> contains a value</ins></th>
+<th><ins><tt>*this</tt> does not contain a value</ins></th>
+</tr>
+<tr>
+<td><ins><tt>rhs</tt> contains a value</ins></td>
+<td><ins>calls <tt>swap(*(*this), *rhs)</tt></ins></td>
+<td><ins>initializes the contained value with uses-allocator construction and 
+<tt>std​::​move(*rhs)</tt> as the constructor argument, followed by <tt>rhs.val->T​::​~T()</tt>; 
+postcondition is that <tt>*this</tt> contains a value and <tt>rhs</tt> does not contain a value</ins></td>
+</tr>
+<tr>
+<td><ins><tt>rhs</tt> does not contain a value</ins></td>
+<td><ins>ins>initializes the contained value with uses-allocator construction and 
+<tt>std​::​move(*(*this))</tt> as the constructor argument, followed by <tt>val->T​::​~T()</tt>; 
+postcondition is that <tt>*this</tt> does not contain a value and <tt>rhs</tt> contains a value</ins></tt></ins></td>
+<td><ins>no effect</ins></td>
+</tr>
+</table></blockquote>
+<br/><tab/><i>Throws:</i> Any exceptions thrown by the operations in the relevant part of Table x.
+
+</ins></blockquote>
+
+
+<p><h4><ins> Observers [<i>alloc-optional</i>.observe]</ins></h4></p>
+<blockquote><ins>
+
+
+<br/><tt>const T* operator-&gt;() const;</tt>
+<br/><tt>T* operator-&gt;();</tt>
+<br/><tab/><i>Requires:</i> <tt>*this</tt> contains a value.
+<br/><tab/><i>Returns:</i> <tt>val</tt>.
+<br/><tab/><i>Throws:</i> Nothing.
+
+<br/>
+<br/><tt>const T&amp; operator*() const&amp;;</tt>
+<br/><tt>T&amp; operator*() &amp;;();</tt>
+<br/><tab/><i>Requires:</i> <tt>*this</tt> contains a value.
+<br/><tab/><i>Returns:</i> <tt>*val</tt>.
+<br/><tab/><i>Throws:</i> Nothing.
+
+<br/>
+<br/><tt>T&amp;&amp; operator*() &amp;&amp;;</tt>
+<br/><tt>const T&amp;&amp; operator*() const&amp;&amp;; &amp;;();</tt>
+<br/><tab/><i>Requires:</i> <tt>*this</tt> contains a value.
+<br/><tab/><i>Effects:</i> Equivalent to:<tt> return std​::​move(*val);</tt>
+
+
+<br/>
+<br/><tt>explicit operator bool() const noexcept;</tt>
+<br/><tab/><i>Returns:</i> <tt>true</tt> if and only if <tt*this></tt> contains a value.
+
+<br/>
+<br/><tt>bool has_value() const noexcept;</tt>
+<br/><tab/><i>Returns:</i> <tt>true</tt> if and only if <tt*this></tt> contains a value.
+
+<br/>
+<br/><tt>const T&amp; value() const&amp;;</tt>
+<br/><tt>T&amp; value() &amp;;</tt>
+<br/><tab/><i>Effects:</i> Equivalent to:
+<br/><tab2/><tt>return bool(*this) ? *val : throw bad_optional_access();</tt>
+
+<br/>
+<br/><tt>T&amp;&amp; value() &amp;&amp;;</tt>
+<br/><tt> const T&amp;&amp; value() const&amp;&amp;;</tt>
+<br/><tab/><i>Effects:</i> Equivalent to:
+<br/><tab2/><tt>return bool(*this) ? std::move(*val) : throw bad_optional_access();</tt>
+
+<br/>
+<br/><tt>template&lt;class U&gt; T value_or(U&amp;&amp;) const&amp;;</tt>
+<br/><tab/><i>Effects:</i> Equivalent to:
+<br/><tab2/><tt>return bool(*this) ? **this : static_cast&lt;T&gt;(std::forward&lt;U&gt;(v));</tt>
+<br/><tab/><i>Remarks:</i> If <tt>is_­copy_­constructible_­v&lt;T&gt; 
+&& is_­convertible_­v&lt;U&amp;&amp;, T&gt;</tt> is <tt>is_­copy_­constructible_­v&lt;T&gt; && is_­convertible_­v&lt;U&amp;&amp;, T&gt;</tt>, 
+the program is ill-formed.
+
+
+<br/>
+<br/><tt>template&lt;class U&gt; T value_or(U&amp;&amp;) &amp;&amp;;</tt>
+<br/><tab/><i>Effects:</i> Equivalent to:
+<br/><tab2/><tt>return bool(*this) ? std::move(**this) : static_cast&lt;T&gt;(std::forward&lt;U&gt;(v));</tt>
+<br/><tab/><i>Remarks:</i> If <tt>is_­move_­constructible_­v&lt;T&gt; 
+&& is_­convertible_­v&lt;U&amp;&amp;, T&gt;</tt> is <tt>is_­copy_­constructible_­v&lt;T&gt; && is_­convertible_­v&lt;U&amp;&amp;, T&gt;</tt>, 
+the program is ill-formed.
+
+</ins></blockquote>
+
+
+<p><h4><ins> Modifiers [<i>alloc-optional</i>.mod]</ins></h4></p>
+<blockquote><ins>
+
+<br/><tt>void reset() noexcept;</tt>
+<br/><tab/><i>Effects:</i> If <tt>*this</tt> contains a value, calls <tt>val->T​::​~T()</tt> to destroy the contained value; otherwise no effect.
+<br/><tab/><i>Ensures:</i> <tt>*this</tt> does not contain a value.
+
+
+</ins></blockquote>
 
 <p><h3><ins> Relational operators [pmroptional.relops]</ins></h3></p>
 <blockquote><ins>
