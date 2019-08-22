@@ -549,11 +549,11 @@ namespace pmr {
 <br/><tab2/>    void swap(<i>alloc-optional</i>&lt;T&gt;&amp;, <i>alloc-optional</i>&lt;T&gt;&amp;) noexcept(see below);
 <br/>
 <br/><tab/>   template&lt;class T&gt;
-<br/><tab2/>	optional&lt;<i/>see below</i>&gt; make_optional(T&amp;&amp;);
+<br/><tab2/>	constexpr optional&lt;<i/>see below</i>&gt; make_optional(T&amp;&amp;);
 <br/><tab/>   template&lt;class T, class... Args>
-<br/><tab2/>	optional&lt;T&gt; make_optional(Args&amp;&amp;... args);
+<br/><tab2/>	constexpr optional&lt;T&gt; make_optional(Args&amp;&amp;... args);
 <br/><tab/>   template&lt;class T, class U, class... Args>
-<br/><tab2/>	optional&lt;T&gt; make_optional(initializer_list&lt;U&gt; il, Args&amp;&amp;... args);
+<br/><tab2/>	constexpr optional&lt;T&gt; make_optional(initializer_list&lt;U&gt; il, Args&amp;&amp;... args);
 <br/>
  <br/><tab/> // [<i>alloc-optional</i>.hash], hash support
 <br/><tab/>   template&lt;class T&gt; struct hash&lt;<i>alloc-optional</i>&lt;T&gt;&gt;;
@@ -652,7 +652,7 @@ namespace std::pmr {
 <br/>
 <br/><tab2/>  private:
 <br/><tab2/><tab/>    T* val;         // exposition only
-<br/><tab2/><tab/>    std::memory_resource* M_pmr;         // exposition only
+<br/><tab2/><tab/>    std::memory_resource* const M_pmr;         // exposition only
 <br/><tab/>  };
 <br/>
 <br/>/* todo CTAD */
@@ -1521,16 +1521,16 @@ otherwise <tt>*x &gt;= *y</tt>.
 is <tt>true</tt> and <tt>is_­swappable_­v&lt;T&gt;</tt> is <tt>true</tt>.
 
 <br/>
-<br/><tab/>   template&lt;class T&gt; optional&lt;decay_­t&lt;T&gt;&gt; make_optional(T&amp;&amp;);
+<br/><tab/>   template&lt;class T&gt; constexpr optional&lt;decay_­t&lt;T&gt;&gt; make_optional(T&amp;&amp;);
 <br/><tab/><i>Returns: </i> <tt>optional&lt;decay_­t&lt;T&gt;&gt;(std​::​forward&lt;T&gt;(v)).</tt>
 
 <br/>
-<br/><tab/>   template&lt;class T, class... Args> optional&lt;T&gt; make_optional(Args&amp;&amp;... args);
+<br/><tab/>   template&lt;class T, class... Args> constexpr optional&lt;T&gt; make_optional(Args&amp;&amp;... args);
 <br/><tab/><i>Effects: </i> Equivalent to: <tt> return optional&lt;T&gt(in_­place, std​::​forward&lt;Args&gt;(args)...).</tt>
 
 <br/>
 <br/><tab/>   template&lt;class T, class U, class... Args> optional&lt;T&gt; 
-<br/><tab2/>  make_optional(initializer_list&lt;U&gt; il, Args&amp;&amp;... args);
+<br/><tab2/>  constexpr make_optional(initializer_list&lt;U&gt; il, Args&amp;&amp;... args);
 <br/><tab/><i>Effects: </i> Equivalent to: <tt> return optional&lt;T&gt(in_­place, il, std​::​forward&lt;Args&gt;(args)...).</tt>
 
 <br/>
