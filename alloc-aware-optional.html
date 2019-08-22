@@ -595,7 +595,7 @@ namespace std::pmr {
       <br/><tab2/><tab/>explicit(see below) <i>alloc-optional</i>(std::optional&lt;U&gt;&amp;&amp;);
       <br/>
     <br/><tab2/>// allocator-extended constructors  
-    <br/><tab2/><i>alloc-optional</i>(allocator_arg_t, const Alloc&amp;);
+    <br/><tab2/><i>alloc-optional</i>(allocator_arg_t, const Alloc&amp;) noexcept;
     <br/><tab2/><i>alloc-optional</i>(allocator_arg_t, const Alloc&amp;, const <i>alloc-optional</i>&amp;);
     <br/><tab2/><i>alloc-optional</i>(allocator_arg_t, const Alloc&amp;, <i>alloc-optional</i>&amp;&amp;) noexcept(see below);
     <br/><tab2/>template&lt;class... Args&gt;
@@ -651,8 +651,8 @@ namespace std::pmr {
 <br/><tab2/>    void reset() noexcept;
 <br/>
 <br/><tab2/>  private:
-<br/><tab2/><tab/>    T *val;         // exposition only
-<br/><tab2/><tab/>    std::memory_resource *M_pmr;         // exposition only
+<br/><tab2/><tab/>    T* val;         // exposition only
+<br/><tab2/><tab/>    std::memory_resource* M_pmr;         // exposition only
 <br/><tab/>  };
 <br/>
 <br/>/* todo CTAD */
@@ -737,9 +737,8 @@ If <tt>rhs</tt> contains a value, initializes the contained value with uses-allo
 <br/><tab/><i>Remarks:</i> This constructor shall not participate in overload resolution unless
 <br/><tab2/> - <tt>is_­constructible_­v&lt;T, U&amp;&amp;&gt;</tt> is <tt>true</tt>, 
 <br/><tab2/> - <tt>is_­same_­v&lt;remove_­cvref_­t&lt;U&gt;, in_­place_­t&gt</tt>
-is <tt>false</tt>, 
-<br/><tab2/> - <tt>is_­same_­v&lt;remove_­cvref_­t&lt;U&gt;,<i>alloc-optional</i>&gt</tt> is <tt>false</tt>, and 
-<br/><tab2/> - <tt>is_base_of_v&lt;memory_resource, remove_pointer_t&lt;remove_­cvref_­t&lt;U&gt;&gt;&gt;</tt> is <tt>false</tt>. 
+is <tt>false</tt>, and
+<br/><tab2/> - <tt>is_­same_­v&lt;remove_­cvref_­t&lt;U&gt;,<i>alloc-optional</i>&gt</tt> is <tt>false</tt>. 
 <br/><tab/>The expression inside <tt>explicit</tt> is equivalent to:
 <br/><tab2/><tt>!is_convertible_v&lt;U, T&gt;</tt> 
 
@@ -929,11 +928,14 @@ no effect.
 <br/><tab/><i>Returns:</i> <tt>*this</tt>.
 <br/><tab/><i>Ensures:</i> <tt>bool(rhs) == bool(*this)</tt>.
 <br/><tab/><i>Remarks:</i> If any exception is thrown, the result of the expression <tt>bool(*this)</tt> remains unchanged.
+If an exception is thrown during the call to <tt>T</tt>'s copy constructor, no effect. If an exception is thrown during the 
+call to <tt>T</tt>'s copy assignment, the state of of its contained value is as defined by the exception safety guarantee of
+is determined by the exception safety guarantee of <tt>T</tt>'s copy assignment.
 This operator shall be defined as deleted unless <tt>is_­copy_­constructible_­v&lt;T&gt;</tt> is <tt>true</tt> and 
  <tt>is_­copy_­assignable_­v&lt;T&gt;</tt> is <tt>true</tt>. 
 
 <br/>
-<br/><tt><i>alloc-optional</i>&lt;T&gt;&amp; operator=(<i>alloc-optional</i>&amp;&amp; rhs);</tt>
+<br/><tt><i>alloc-optional</i>&lt;T&gt;&amp; operator=(<i>alloc-optional</i>&amp;&amp; rhs) noexcept(<i>see below</i>);;</tt>
 <br/><tab/><i>Effects:</i> See Table
 <blockquote>
 <table border="1">
@@ -956,7 +958,12 @@ This operator shall be defined as deleted unless <tt>is_­copy_­constructible_�
 </table></blockquote>
 <br/><tab/><i>Returns:</i> <tt>*this</tt>.
 <br/><tab/><i>Ensures:</i> <tt>bool(rhs) == bool(*this)</tt>.
-<br/><tab/><i>Remarks:</i> If any exception is thrown, the result of the expression <tt>bool(*this)</tt> remains unchanged.
+<br/><tab/><i>Remarks:</i> The expression inside <tt>noexcept</tt> is equivalent to:
+<br/><tab2/><code>is_nothrow_move_assignable_v&lt;T&gt; && is_nothrow_move_constructible_v&lt;T&gt;</code>
+<br/><tab/>If any exception is thrown, the result of the expression <tt>bool(*this)</tt> remains unchanged.
+If an exception is thrown during the call to <tt>T</tt>'s move constructor, the state of <tt>*rhs.val</tt> is determined by 
+the exception safety guarantee of <tt>T</tt>'s move constructor. If an exception is thrown during the call to <tt>T</tt>'s move assignment, 
+the state of <tt>*val</tt> and <tt>*rhs.val</tt> is determined by the exception safety guarantee of <tt>T</tt>'s move assignment.
 This operator shall not participate in overload resolution unless <tt>is_­move_­constructible_­v&lt;T&gt;</tt> is <tt>true</tt> and 
  <tt>is_­move_­assignable_­v&lt;T&gt;</tt> is <tt>true</tt>. 
 
@@ -967,11 +974,16 @@ This operator shall not participate in overload resolution unless <tt>is_­move_
 otherwise initializes the contained value with uses-allocator construction and <tt>std​::​forward&lt;U&gt;(v)</tt> as the constructor argument.
 <br/><tab/><i>Returns:</i> <tt>*this</tt>.
 <br/><tab/><i>Ensures:</i> <tt>*this</tt> contains a value.
-<br/><tab/><i>Remarks:</i> This function shall not participate in overload resolution unless
+<br/><tab/><i>Remarks: If any exception is thrown, the result of the expression <tt>bool(*this)</tt> remains unchanged. 
+If an exception is thrown during the call to <tt>T</tt>'s constructor, the state of <tt>v</tt> is determined by the exception 
+safety guarantee of <tt>T</tt>'s constructor. If an exception is thrown during the call to <tt>T</tt>'s assignment, 
+the state of <tt>*val</tt> and <tt>v</tt> is determined by the exception safety guarantee of <tt>T</tt>'s assignment.
+</i> This function shall not participate in overload resolution unless
 <br/><tab2/> - <tt>is_­same_­v&lt;remove_­cvref_­t&lt;U&gt;, alloc-optional&gt;</tt> is <tt>false</tt>, 
 <br/><tab2/> - <tt>conjunction_­v&lt;is_­scalar&lt;T&gt;, is_­same&lt;T, decay_­t&lt;U&gt;&gt;&gt;</tt> is <tt>false</tt>,
 <br/><tab2/> - <tt>is_­constructible_­v&lt;T,U&gt;</tt> is <tt>true</tt>, and
 <br/><tab2/> - <tt>is_­assignable_­v&lt;T&amp;,U&gt;</tt> is <tt>true</tt> 
+
 
 <br/>
 <br/><tt>template&lt;class U&gt; <i>alloc-optional</i>&amp; operator=(const <i>alloc-optional</i>&lt;U&gt;&amp; rhs);</tt>
@@ -998,6 +1010,8 @@ otherwise initializes the contained value with uses-allocator construction and <
 <br/><tab/><i>Returns:</i> <tt>*this</tt>.
 <br/><tab/><i>Ensures:</i> <tt>bool(rhs) == bool(*this)</tt>.
 <br/><tab/><i>Remarks:</i> If any exception is thrown, the result of the expression <tt>bool(*this)</tt> remains unchanged.
+If an exception is thrown during the call to <tt>T</tt>'s constructor, no effect. If an exception is thrown during the call 
+to <tt>T</tt>'s assignment, the state of <tt>*val</tt>  is determined by the exception safety guarantee of <tt>T</tt>'s assignment.
 This operator shall not participate in overload resolution unless
 <br/><tab2/> - <tt>is_same&lt;T,U&gt;</tt> is <tt>false</tt>, 
 <br/><tab2/> - <tt>is_­constructible_­v&lt;T, const U&amp;&gt;</tt> is <tt>true</tt>, 
@@ -1027,6 +1041,7 @@ This operator shall not participate in overload resolution unless
 <br/><tab2/> - <tt>is_assignable_v&lt;T&amp;, const std::optional&lt;U&gt;&amp;&amp;&gt;</tt> is <tt>false</tt>, and
 <br/><tab2/> - <tt>is_assignable_v&lt;T&amp;, const <i>alloc-optional</i>&lt;U&gt;&amp;&amp;&gt;</tt> is <tt>false</tt> 
 
+
 <br/>
 <br/><tt>template&lt;class U&gt; <i>alloc-optional</i>&amp; operator=(const std::optional&lt;U&gt;&amp; rhs);</tt>
 <br/><tab/><i>Effects:</i> The result of the expression <tt>bool(rhs)</tt> remains unchanged. See Table
@@ -1052,6 +1067,8 @@ This operator shall not participate in overload resolution unless
 <br/><tab/><i>Returns:</i> <tt>*this</tt>.
 <br/><tab/><i>Ensures:</i> <tt>bool(rhs) == bool(*this)</tt>.
 <br/><tab/><i>Remarks:</i> If any exception is thrown, the result of the expression <tt>bool(*this)</tt> remains unchanged.
+If an exception is thrown during the call to <tt>T</tt>'s constructor, no effect. If an exception is thrown during the call 
+to <tt>T</tt>'s assignment, the state of <tt>*val</tt>  is determined by the exception safety guarantee of <tt>T</tt>'s assignment.
 This operator shall not participate in overload resolution unless
 <br/><tab2/> - <tt>is_­constructible_­v&lt;T, U&gt;</tt> is <tt>true</tt>, 
 <br/><tab2/> - <tt>is_assignable&lt;T&amp;, U&gt;</tt> is <tt>true</tt>,
@@ -1106,6 +1123,9 @@ This operator shall not participate in overload resolution unless
 <br/><tab/><i>Returns:</i> <tt>*this</tt>.
 <br/><tab/><i>Ensures:</i> <tt>bool(rhs) == bool(*this)</tt>.
 <br/><tab/><i>Remarks:</i> If any exception is thrown, the result of the expression <tt>bool(*this)</tt> remains unchanged.
+If an exception is thrown during the call to <tt>T</tt>'s move constructor, the state of <tt>*rhs.val</tt> is determined by 
+the exception safety guarantee of <tt>T</tt>'s move constructor. If an exception is thrown during the call to <tt>T</tt>'s move assignment, 
+the state of <tt>*val</tt> and <tt>*rhs.val</tt> is determined by the exception safety guarantee of <tt>T</tt>'s move assignment.
 This operator shall not participate in overload resolution unless
 <br/><tab2/> - <tt>is_same&lt;T,U&gt;</tt> is <tt>false</tt>, 
 <br/><tab2/> - <tt>is_­constructible_­v&lt;T, const U&amp;&gt;</tt> is <tt>true</tt>, 
@@ -1161,6 +1181,9 @@ This operator shall not participate in overload resolution unless
 <br/><tab/><i>Returns:</i> <tt>*this</tt>.
 <br/><tab/><i>Ensures:</i> <tt>bool(rhs) == bool(*this)</tt>.
 <br/><tab/><i>Remarks:</i> If any exception is thrown, the result of the expression <tt>bool(*this)</tt> remains unchanged.
+If an exception is thrown during the call to <tt>T</tt>'s constructor, the state of <tt>*rhs.val</tt> is determined by the exception 
+safety guarantee of <tt>T</tt>'s constructor. If an exception is thrown during the call to <tt>T</tt>'s assignment, 
+the state of <tt>*val</tt> and <tt>*rhs.val</tt> is determined by the exception safety guarantee of <tt>T</tt>'s assignment.
 This operator shall not participate in overload resolution unless
 <br/><tab2/> - <tt>is_­constructible_­v&lt;T, const U&amp;&gt;</tt> is <tt>true</tt>, 
 <br/><tab2/> - <tt>is_assignable&lt;T&amp;, const U&amp;&gt;</tt> is <tt>true</tt>,
