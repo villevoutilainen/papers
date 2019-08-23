@@ -602,6 +602,7 @@ namespace std::pmr {
       <br/><tab2/><tab/>explicit(see below) <i>alloc-optional</i>(std::optional&lt;U&gt;&amp;&amp;);
       <br/>
     <br/><tab2/>// allocator-extended constructors  
+    <br/><tab2/><i>alloc-optional</i>(allocator_arg_t, const polymorphic_allocator&lt;&gt;&amp;) noexcept;
     <br/><tab2/><i>alloc-optional</i>(allocator_arg_t, const polymorphic_allocator&lt;&gt;&amp;, nullopt_t) noexcept;
     <br/><tab2/><i>alloc-optional</i>(allocator_arg_t, const polymorphic_allocator&lt;&gt;&amp;, const <i>alloc-optional</i>&amp;);
     <br/><tab2/><i>alloc-optional</i>(allocator_arg_t, const polymorphic_allocator&lt;&gt;&amp;, <i>alloc-optional</i>&amp;&amp;) noexcept(see below);
@@ -872,6 +873,7 @@ If <tt>rhs</tt> contains a value, initializes the contained value with uses-allo
     
     
 <code> 
+	<br/><i>alloc-optional</i>(allocator_arg_t, const polymorphic_allocator&lt;&gt;&amp;) noexcept;
   <br/><i>alloc-optional</i>(allocator_arg_t, const polymorphic_allocator&lt;&gt;&amp;, nullopt_t) noexcept;
     <br/><i>alloc-optional</i>(allocator_arg_t, const polymorphic_allocator&lt;&gt;&amp;, const <i>alloc-optional</i>&amp;);
     <br/><i>alloc-optional</i>(allocator_arg_t, const polymorphic_allocator&lt;&gt;&amp;, <i>alloc-optional</i>&amp;&amp;) noexcept(see below);
