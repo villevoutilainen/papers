@@ -602,13 +602,13 @@ namespace std::pmr {
       <br/><tab2/><tab/>explicit(see below) <i>alloc-optional</i>(std::optional&lt;U&gt;&amp;&amp;);
       <br/>
     <br/><tab2/>// allocator-extended constructors  
-    <br/><tab2/><i>alloc-optional</i>(allocator_arg_t, const polymorphic_allocator&lt;&gt;&amp;) noexcept;
+    <br/><tab2/><i>alloc-optional</i>(allocator_arg_t, const polymorphic_allocator&lt;&gt;&amp;, nullopt_t) noexcept;
     <br/><tab2/><i>alloc-optional</i>(allocator_arg_t, const polymorphic_allocator&lt;&gt;&amp;, const <i>alloc-optional</i>&amp;);
     <br/><tab2/><i>alloc-optional</i>(allocator_arg_t, const polymorphic_allocator&lt;&gt;&amp;, <i>alloc-optional</i>&amp;&amp;) noexcept(see below);
     <br/><tab2/>template&lt;class... Args&gt;
-      <br/><tab2/><tab/>explicit <i>alloc-optional</i>(allocator_arg_t, const polymorphic_allocator&lt;&gt;&amp;, Args&amp;&amp;...);
+      <br/><tab2/><tab/>explicit <i>alloc-optional</i>(in_place_t, allocator_arg_t, const polymorphic_allocator&lt;&gt;&amp;, Args&amp;&amp;...);
     <br/><tab2/>template&lt;class U, class... Args&gt;
-      <br/><tab2/><tab/>explicit <i>alloc-optional</i>(allocator_arg_t, const polymorphic_allocator&lt;&gt;&amp;, initializer_list&lt;U&gt;, Args&amp;&amp;...);
+      <br/><tab2/><tab/>explicit <i>alloc-optional</i>(in_place_t, allocator_arg_t, const polymorphic_allocator&lt;&gt;&amp;, initializer_list&lt;U&gt;, Args&amp;&amp;...);
     <br/><tab2/>template&lt;class U = T&gt;
       <br/><tab2/><tab/>explicit(see below) <i>alloc-optional</i>(allocator_arg_t, const polymorphic_allocator&lt;&gt;&amp;,U&amp;&amp;);
     <br/><tab2/>template&lt;class U&gt;
@@ -871,24 +871,25 @@ If <tt>rhs</tt> contains a value, initializes the contained value with uses-allo
     <br/>
     
     
-<code>        <br/><i>alloc-optional</i>(allocator_arg_t, const polymorphic_allocator&lt;&gt;&amp; a);
-<br/><i>alloc-optional</i>(allocator_arg_t, const polymorphic_allocator&lt;&gt;&amp; a, const <i>alloc-optional</i>&amp;);
-<br/><i>alloc-optional</i>(allocator_arg_t, const polymorphic_allocator&lt;&gt;&amp; a, <i>alloc-optional</i>&amp;&amp;) noexcept(see below);
-<br/>template&lt;class... Args&gt;
-  <br/><tab/>explicit <i>alloc-optional</i>(allocator_arg_t, const polymorphic_allocator&lt;&gt;&amp; a, Args&amp;&amp;...);
-<br/>template&lt;class U, class... Args&gt;
-  <br/><tab/>explicit <i>alloc-optional</i>(allocator_arg_t, const polymorphic_allocator&lt;&gt;&amp; a, initializer_list&lt;U&gt;, Args&amp;&amp;...);
-<br/>template&lt;class U = T&gt;
-  <br/><tab/>explicit(see below) <i>alloc-optional</i>(allocator_arg_t, const polymorphic_allocator&lt;&gt;&amp; a,U&amp;&amp;);
-<br/>template&lt;class U&gt;
-  <br/><tab/>explicit(see below) <i>alloc-optional</i>(allocator_arg_t, const polymorphic_allocator&lt;&gt;&amp; a,const <i>alloc-optional</i>&lt;U&gt;&amp;;
-<br/>template&lt;class U&gt;
-  <br/><tab/>explicit(see below) <i>alloc-optional</i>(allocator_arg_t, const polymorphic_allocator&lt;&gt;&amp; a,<i>alloc-optional</i>&lt;U&gt;&amp;&amp;);
+<code> 
+  <br/><i>alloc-optional</i>(allocator_arg_t, const polymorphic_allocator&lt;&gt;&amp;, nullopt_t) noexcept;
+    <br/><i>alloc-optional</i>(allocator_arg_t, const polymorphic_allocator&lt;&gt;&amp;, const <i>alloc-optional</i>&amp;);
+    <br/><i>alloc-optional</i>(allocator_arg_t, const polymorphic_allocator&lt;&gt;&amp;, <i>alloc-optional</i>&amp;&amp;) noexcept(see below);
+    <br/>template&lt;class... Args&gt;
+      <br/><tab/>explicit <i>alloc-optional</i>(in_place_t, allocator_arg_t, const polymorphic_allocator&lt;&gt;&amp;, Args&amp;&amp;...);
+    <br/>template&lt;class U, class... Args&gt;
+      <br/><tab/>explicit <i>alloc-optional</i>(in_place_t, allocator_arg_t, const polymorphic_allocator&lt;&gt;&amp;, initializer_list&lt;U&gt;, Args&amp;&amp;...);
+    <br/>template&lt;class U = T&gt;
+      <br/><tab/>explicit(see below) <i>alloc-optional</i>(allocator_arg_t, const polymorphic_allocator&lt;&gt;&amp;,U&amp;&amp;);
+    <br/>template&lt;class U&gt;
+      <br/><tab/>explicit(see below) <i>alloc-optional</i>(allocator_arg_t, const polymorphic_allocator&lt;&gt;&amp;,const <i>alloc-optional</i>&lt;U&gt;&amp;;
+    <br/>template&lt;class U&gt;
+      <br/><tab/>explicit(see below) <i>alloc-optional</i>(allocator_arg_t, const polymorphic_allocator&lt;&gt;&amp;,<i>alloc-optional</i>&lt;U&gt;&amp;&amp;);
 	<br/>template&lt;class U&gt;
-  <br/><tab/>explicit(see below) <i>alloc-optional</i>(allocator_arg_t, const polymorphic_allocator&lt;&gt;&amp; a,const std::optional&lt;U&gt;&amp;;
-<br/>template&lt;class U&gt;
-  <br/><tab/>explicit(see below) <i>alloc-optional</i>(allocator_arg_t, const polymorphic_allocator&lt;&gt;&amp; a,std::optional&lt;U&gt;&amp;&amp;);  
-      </code>
+      <br/><tab/>explicit(see below) <i>alloc-optional</i>(allocator_arg_t, const polymorphic_allocator&lt;&gt;&amp;,const std::optional&lt;U&gt;&amp;;
+    <br/>template&lt;class U&gt;
+      <br/><tab/>explicit(see below) <i>alloc-optional</i>(allocator_arg_t, const polymorphic_allocator&lt;&gt;&amp;,std::optional&lt;U&gt;&amp;&amp;);  
+ </code>
 <br/><tab/><i>Requires:</i> <tt>uses_allocator&lt;T,polymorphic_allocator&lt;&gt;&gt;</tt> is true;
 <br/><tab/><i>Effects:</i> Equivalent to the preceding constructors except that <tt>M_pmr</tt> is initialized with <tt>a.resource()</tt>.
       </blockquote></ins></p>
@@ -1553,19 +1554,19 @@ expression <tt>T(il, std​::​forward&lt;Args&gt;(args)...)</tt> is a core con
 <br/><tab/>   template&lt;class T, optional&lt;decay_­t&lt;T&gt;&gt; 
 <br/><tab2/>  alloc_optional(const polymorphic_allocator&lt;&gt;&amp; a, T&amp;&amp;);
 <br/><tab/><i>Requires:</i> <tt>uses_allocator&lt;T,polymorphic_allocator&lt;&gt;&gt;</tt> is true;
-<br/><tab/><i>Returns: </i> <tt>optional&lt;decay_­t&lt;T&gt;&gt;(allocator_arg, a, std​::​forward&lt;T&gt;(v)).</tt>
+<br/><tab/><i>Returns: </i> <tt>optional&lt;decay_­t&lt;T&gt;&gt;(in_place, allocator_arg, a, std​::​forward&lt;T&gt;(v)).</tt>
 
 <br/>
 <br/><tab/>   template&lt;class T, class... Args> optional&lt;T&gt; 
 <br/><tab2/>  alloc_optional(const polymorphic_allocator&lt;&gt;&amp; a, Args&amp;&amp;... args);
 <br/><tab/><i>Requires:</i> <tt>uses_allocator&lt;T,polymorphic_allocator&lt;&gt;&gt;</tt> is true;
-<br/><tab/><i>Effects: </i> Equivalent to: <tt> return optional&lt;T&gt(allocator_arg, a, std​::​forward&lt;Args&gt;(args)...).</tt>
+<br/><tab/><i>Effects: </i> Equivalent to: <tt> return optional&lt;T&gt(in_place, allocator_arg, a, std​::​forward&lt;Args&gt;(args)...).</tt>
 
 <br/>
 <br/><tab/>   template&lt;class T, class U, class... Args> optional&lt;T&gt;
 <br/><tab2/>  alloc_optional(const polymorphic_allocator&lt;&gt;&amp; a, initializer_list&lt;U&gt; il, Args&amp;&amp;... args);
 <br/><tab/><i>Requires:</i> <tt>uses_allocator&lt;T,polymorphic_allocator&lt;&gt;&gt;</tt> is true;
-<br/><tab/><i>Effects: </i> Equivalent to: <tt> return optional&lt;T&gt(allocator_arg, a, il, std​::​forward&lt;Args&gt;(args)...).</tt>
+<br/><tab/><i>Effects: </i> Equivalent to: <tt> return optional&lt;T&gt(in_place, allocator_arg, a, il, std​::​forward&lt;Args&gt;(args)...).</tt>
 
 </ins></blockquote>
 
