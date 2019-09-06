@@ -74,6 +74,24 @@ Audience: LEWG
   doesn't change the type, nor does it change the size of the type.
 </p>
 
+<h2>Rationale for explicit specialization of uses_allocator for
+   the allocator-aware optional type </h2>
+
+<p>
+  In the proposal, the unnamed concrete allocator-aware optional
+  type, i.e. <i>alloc-optional</i>, is only every used for a type for which 
+  uses_allocator&lt;T, polymorphic_allocator&lt;&gt;&gt;</tt> is true.
+  However, one can still imagine a situation in which a user
+  instantiates <i>alloc-optional</i> with a type for which 
+  uses_allocator&lt;T, polymorphic_allocator&lt;&gt;&gt;</tt> is false.
+  This is why we decided against a 
+  <tt>using allocator_type = pmr::polymorphic_allocator&lt;&gt;;</tt>
+  declaration inside <i>alloc-optional</i>. The proposed explicit specialization
+  takes into account whether the value type 
+  uses_allocator&lt;T, polymorphic_allocator&lt;&gt;&gt;</tt> or not.
+</p>
+
+
 <h2>In general, some remarks about triviality</h2>
 
 <p>
@@ -206,7 +224,7 @@ Otherwise, the alias template denotes <tt>std::optional</tt>. </ins></p></blockq
 <p>
 <ins>
 <br/>
-<br/><code>template&lt;class U&gt; explicit(see below) optional(const <i>alloc-optional</i>&lt;U&gt;&amp; v);</code>
+<br/><code>template&lt;class U&gt; explicit(see below) optional(const <i>alloc-optional</i>&lt;U&gt;&amp; rhs);</code>
 <br/><tab/><i>Effects:</i> If <tt>rhs</tt> contains a value, initializes the contained value 
  as if direct-non-list-initializing an object of type <tt>T</tt> with the expression <tt>*rhs</tt>.
 <br/><tab/><i>Ensures:</i> <tt>bool(rhs) == bool(*this)</tt>.
@@ -235,7 +253,7 @@ Otherwise, the alias template denotes <tt>std::optional</tt>. </ins></p></blockq
 <br/>     
 
 <br/>
-<br/><code>template&lt;class U&gt; explicit(see below) optional(<i>alloc-optional</i>&lt;U&gt;&amp;&amp; v);</code>
+<br/><code>template&lt;class U&gt; explicit(see below) optional(<i>alloc-optional</i>&lt;U&gt;&amp;&amp; rhs);</code>
 <br/><tab/><i>Effects:</i> If <tt>rhs</tt> contains a value, initializes the contained value 
  as if direct-non-list-initializing an object of type <tt>T</tt> with the expression <tt>std​::​move(*rhs)</tt>.
 <tt>std​::​move(*rhs)</tt> as the constructor argument. <tt>bool(rhs)</tt> is unchanged.
@@ -565,9 +583,11 @@ namespace pmr {
  <br/><tab/> // [<i>alloc-optional</i>.hash], hash support
 <br/><tab/>   template&lt;class T&gt; struct hash&lt;<i>alloc-optional</i>&lt;T&gt;&gt;;
 <br/>}
+
 <br/> namespace std {
-<br/><tab/> template&lt;typename T, typename _Alloc&gt;
- <br/><tab2/>   struct uses_allocator&lt;<i>alloc-optional</i>&lt;T&gt;, _Alloc&gt; : true_type {};
+<br/><tab/> template&lt;typename T&gt;
+ <br/><tab2/>   struct uses_allocator&lt;<i>alloc-optional</i>&lt;T&gt;, pmr::polymorphic_allocator&lt;&gt;&gt; 
+ <br/><tab2/><tab/> : public uses_allocator&lt;T, pmr::polymorphic_allocator&lt;&gt;&gt;::type { };
 <br/>}
 </code></ins></blockquote></p>
 
@@ -593,11 +613,11 @@ namespace std::pmr {
     <br/><tab2/>template&lt;class U = T&gt;
       <br/><tab2/><tab/>explicit(see below) <i>alloc-optional</i>(U&amp;&amp;);
     <br/><tab2/>template&lt;class U&gt;
-      <br/><tab2/><tab/>explicit(see below) <i>alloc-optional</i>(const <i>alloc-optional</i>&lt;U&gt;&amp;;
+      <br/><tab2/><tab/>explicit(see below) <i>alloc-optional</i>(const <i>alloc-optional</i>&lt;U&gt;&amp;);
     <br/><tab2/>template&lt;class U&gt;
       <br/><tab2/><tab/>explicit(see below) <i>alloc-optional</i>(<i>alloc-optional</i>&lt;U&gt;&amp;&amp;);
 	<br/><tab2/>template&lt;class U&gt;
-      <br/><tab2/><tab/>explicit(see below) <i>alloc-optional</i>(const std::optional&lt;U&gt;&amp;;
+      <br/><tab2/><tab/>explicit(see below) <i>alloc-optional</i>(const std::optional&lt;U&gt;&amp;);
     <br/><tab2/>template&lt;class U&gt;
       <br/><tab2/><tab/>explicit(see below) <i>alloc-optional</i>(std::optional&lt;U&gt;&amp;&amp;);
       <br/>
@@ -613,11 +633,11 @@ namespace std::pmr {
     <br/><tab2/>template&lt;class U = T&gt;
       <br/><tab2/><tab/>explicit(see below) <i>alloc-optional</i>(allocator_arg_t, const polymorphic_allocator&lt;&gt;&amp;,U&amp;&amp;);
     <br/><tab2/>template&lt;class U&gt;
-      <br/><tab2/><tab/>explicit(see below) <i>alloc-optional</i>(allocator_arg_t, const polymorphic_allocator&lt;&gt;&amp;,const <i>alloc-optional</i>&lt;U&gt;&amp;;
+      <br/><tab2/><tab/>explicit(see below) <i>alloc-optional</i>(allocator_arg_t, const polymorphic_allocator&lt;&gt;&amp;,const <i>alloc-optional</i>&lt;U&gt;&amp;);
     <br/><tab2/>template&lt;class U&gt;
       <br/><tab2/><tab/>explicit(see below) <i>alloc-optional</i>(allocator_arg_t, const polymorphic_allocator&lt;&gt;&amp;,<i>alloc-optional</i>&lt;U&gt;&amp;&amp;);
 	<br/><tab2/>template&lt;class U&gt;
-      <br/><tab2/><tab/>explicit(see below) <i>alloc-optional</i>(allocator_arg_t, const polymorphic_allocator&lt;&gt;&amp;,const std::optional&lt;U&gt;&amp;;
+      <br/><tab2/><tab/>explicit(see below) <i>alloc-optional</i>(allocator_arg_t, const polymorphic_allocator&lt;&gt;&amp;,const std::optional&lt;U&gt;&amp;);
     <br/><tab2/>template&lt;class U&gt;
       <br/><tab2/><tab/>explicit(see below) <i>alloc-optional</i>(allocator_arg_t, const polymorphic_allocator&lt;&gt;&amp;,std::optional&lt;U&gt;&amp;&amp;);  
 <br/>
@@ -631,7 +651,7 @@ namespace std::pmr {
 <br/><tab2/>    template&lt;class U = T&gt; <i>alloc-optional</i>&amp; operator=(U&amp;&amp;);
 <br/><tab2/>    template&lt;class U&gt; <i>alloc-optional</i>&amp; operator=(const <i>alloc-optional</i>&lt;U&gt;&amp;);
 <br/><tab2/>    template&lt;class U&gt; <i>alloc-optional</i>&amp; operator=(<i>alloc-optional</i>&lt;U&gt;&amp;&amp;);
-<br/><tab2/>    template&lt;class U&gt; <i>alloc-optional</i>&amp; operator=(const std::optional&lt;U&gt;&amp;;
+<br/><tab2/>    template&lt;class U&gt; <i>alloc-optional</i>&amp; operator=(const std::optional&lt;U&gt;&amp;);
 <br/><tab2/>    template&lt;class U&gt; <i>alloc-optional</i>&amp; operator=(std::optional&lt;U&gt;&amp;&amp;);
 <br/><tab2/>    template&lt;class... Args&gt;> T&amp; emplace(Args&amp;&amp;...);
 <br/><tab2/>    template&lt;class U, class... Args&gt; T&amp; emplace(initializer_list&lt;U&gt;, Args&amp;&amp;...);
@@ -654,6 +674,8 @@ namespace std::pmr {
 <br/><tab2/>    const T&amp;&amp; value() const&amp;&amp;;
 <br/><tab2/>    template&lt;class U&gt; T value_or(U&amp;&amp;) const&amp;;
 <br/><tab2/>    template&lt;class U&gt; T value_or(U&amp;&amp;) &amp;&amp;;
+<br/><tab2/>    pmr::polymorphic_allocator&lt;&gt; get_allocator() const noexcept;
+
 <br/>
  <br/><tab2/>   // [<i>alloc-optional</i>.mod], modifiers
 <br/><tab2/>    void reset() noexcept;
@@ -698,8 +720,9 @@ that meets the <i>Cpp17Destructible</i> requirements (Table 30).</ins></blockquo
 <br/><tab/><i>Remarks:</i> No contained value is initialized.
 <br/>
 <br/><code><i>alloc-optional</i>(const <i>alloc-optional</i>&amp;);</code>
-<br/><tab/><i>Effects:</i> <tt>M_pmr</tt> is initialized with <tt>std::pmr::get_default_resource()</tt>. 
-If <tt>rhs</tt> contains a value, initializes the contained value with uses-allocator construction and the expression <tt>*rhs</tt>
+<br/><tab/><i>Effects:</i> <tt>M_pmr</tt> is initialized with <tt>rhs.M_pmr</tt>. 
+If <tt>rhs</tt> contains a value, initializes the contained value by uses-allocator construction 
+with allocator <tt>polymorphic_allocator&lt;&gt;(_M_pmr)</tt> and the expression <tt>*rhs</tt>
 as the constructor argument.
 <br/><tab/><i>Ensures:</i> <tt>bool(rhs) == bool(*this)</tt>.
 <br/><tab/><i>Throws:</i> Any exception thrown by the selected constructor of <tt>T</tt>.
@@ -707,8 +730,9 @@ as the constructor argument.
 
 <br/>
 <br/><code><i>alloc-optional</i>(<i>alloc-optional</i>&amp;&amp; rhs) noexcept(see below)</code>
-<br/><tab/><i>Effects:</i> <tt>M_pmr</tt> is initialized with <tt>std::pmr::get_default_resource()</tt>. 
-If <tt>rhs</tt> contains a value, initializes the contained value with uses-allocator construction and 
+<br/><tab/><i>Effects:</i> <tt>M_pmr</tt> is initialized with <tt>rhs.M_pmr</tt>. 
+If <tt>rhs</tt> contains a value, initializes the contained value by uses-allocator construction 
+with allocator <tt>polymorphic_allocator&lt;&gt;(_M_pmr)</tt> and 
 <tt>std​::​move(*rhs)</tt> as the constructor argument. <tt>bool(rhs)</tt> is unchanged.
 <br/><tab/><i>Ensures:</i> <tt>bool(rhs) == bool(*this)</tt>.
 <br/><tab/><i>Throws:</i> Any exception thrown by the selected constructor of <tt>T</tt>.
@@ -719,7 +743,8 @@ This constructor shall not participate in overload resolution unless <tt>is_­mo
 <br/>
 <br/><code>template&lt;class... Args&gt; explicit <i>alloc-optional</i>(in_place_t, Args&amp;&amp;... args);</code>
 <br/><tab/><i>Effects:</i> <tt>M_pmr</tt> is initialized with <tt>std::pmr::get_default_resource()</tt>. 
-If <tt>rhs</tt> contains a value, initializes the contained value with uses-allocator construction and 
+If <tt>rhs</tt> contains a value, initializes the contained value by uses-allocator construction 
+with allocator <tt>polymorphic_allocator&lt;&gt;(_M_pmr)</tt> and 
 <tt>std​::​forward&lt;Args&gt;(args)....</tt> as the constructor arguments. 
 <br/><tab/><i>Ensures:</i> <tt>*this</tt> contains a value..
 <br/><tab/><i>Throws:</i> Any exception thrown by the selected constructor of <tt>T</tt>.
@@ -728,7 +753,8 @@ If <tt>rhs</tt> contains a value, initializes the contained value with uses-allo
 <br/>
 <br/><code>template&lt;class... Args&gt; explicit <i>alloc-optional</i>(in_place_t, initializer_list&lt;U&gt; il, Args&amp;&amp;... args);</code>
 <br/><tab/><i>Effects:</i> <tt>M_pmr</tt> is initialized with <tt>std::pmr::get_default_resource()</tt>. 
-If <tt>rhs</tt> contains a value, initializes the contained value with uses-allocator construction and 
+If <tt>rhs</tt> contains a value, initializes the contained value by uses-allocator construction 
+with allocator <tt>polymorphic_allocator&lt;&gt;(_M_pmr)</tt> and 
 <tt>il, std​::​forward&lt;Args&gt;(args)....</tt> as the constructor arguments. 
 <br/><tab/><i>Ensures:</i> <tt>*this</tt> contains a value..
 <br/><tab/><i>Throws:</i> Any exception thrown by the selected constructor of <tt>T</tt>.
@@ -736,10 +762,11 @@ If <tt>rhs</tt> contains a value, initializes the contained value with uses-allo
 <tt>is_­constructible_­v&lt;T, initializer_­list&lt;U&gt;&amp;, Args&amp;&amp;...&gt;</tt> is true.
   
 <br/>
-<br/><code>template&lt;class U = T&gt; explicit(see below) <i>alloc-optional</i>(U&amp;&amp; v);</code>
+<br/><code>template&lt;class U = T&gt; explicit(see below) <i>alloc-optional</i>(U&amp;&amp; rhs);</code>
 <br/><tab/><i>Effects:</i> <tt>M_pmr</tt> is initialized with <tt>std::pmr::get_default_resource()</tt>. 
-If <tt>rhs</tt> contains a value, initializes the contained value with uses-allocator construction and 
-<tt> std​::​forward&lt;U&gt;(v)</tt> as the constructor arguments. 
+If <tt>rhs</tt> contains a value, initializes the contained value by uses-allocator construction 
+with allocator <tt>polymorphic_allocator&lt;&gt;(_M_pmr)</tt> and 
+<tt> std​::​forward&lt;U&gt;(rhs)</tt> as the constructor arguments. 
 <br/><tab/><i>Ensures:</i> <tt>*this</tt> contains a value.
 <br/><tab/><i>Throws:</i> Any exception thrown by the selected constructor of <tt>T</tt>.
 <br/><tab/><i>Remarks:</i> This constructor shall not participate in overload resolution unless
@@ -751,9 +778,10 @@ is <tt>false</tt>, and
 <br/><tab2/><tt>!is_convertible_v&lt;U, T&gt;</tt> 
 
 <br/>
-<br/><code>template&lt;class U&gt; explicit(see below) <i>alloc-optional</i>(const <i>alloc-optional</i>&lt;U&gt;&amp; v);</code>
+<br/><code>template&lt;class U&gt; explicit(see below) <i>alloc-optional</i>(const <i>alloc-optional</i>&lt;U&gt;&amp; rhs);</code>
 <br/><tab/><i>Effects:</i> <tt>M_pmr</tt> is initialized with <tt>std::pmr::get_default_resource()</tt>. 
-If <tt>rhs</tt> contains a value, initializes the contained value with uses-allocator construction and 
+If <tt>rhs</tt> contains a value, initializes the contained value by uses-allocator construction 
+with allocator <tt>polymorphic_allocator&lt;&gt;(_M_pmr)</tt> and 
 <tt>*rhs</tt> as the constructor argument. 
 <br/><tab/><i>Ensures:</i> <tt>bool(rhs) == bool(*this)</tt>.
 <br/><tab/><i>Throws:</i> Any exception thrown by the selected constructor of <tt>T</tt>.
@@ -782,9 +810,10 @@ If <tt>rhs</tt> contains a value, initializes the contained value with uses-allo
 
 
 <br/>
-<br/><code>template&lt;class U&gt; explicit(see below) <i>alloc-optional</i>(<i>alloc-optional</i>&lt;U&gt;&amp;&amp; v);</code>
+<br/><code>template&lt;class U&gt; explicit(see below) <i>alloc-optional</i>(<i>alloc-optional</i>&lt;U&gt;&amp;&amp; rhs);</code>
 <br/><tab/><i>Effects:</i> <tt>M_pmr</tt> is initialized with <tt>std::pmr::get_default_resource()</tt>. 
-If <tt>rhs</tt> contains a value, initializes the contained value with uses-allocator construction and 
+If <tt>rhs</tt> contains a value, initializes the contained value by uses-allocator construction 
+with allocator <tt>polymorphic_allocator&lt;&gt;(_M_pmr)</tt> and 
 <tt>std​::​move(*rhs)</tt> as the constructor argument. <tt>bool(rhs)</tt> is unchanged.
 <br/><tab/><i>Ensures:</i> <tt>bool(rhs) == bool(*this)</tt>.
 <br/><tab/><i>Throws:</i> Any exception thrown by the selected constructor of <tt>T</tt>.
@@ -812,9 +841,10 @@ If <tt>rhs</tt> contains a value, initializes the contained value with uses-allo
 <br/>    
 
 <br/>
-<br/><code>template&lt;class U&gt; explicit(see below) <i>alloc-optional</i>(const std::optional&lt;U&gt;&amp; v);</code>
+<br/><code>template&lt;class U&gt; explicit(see below) <i>alloc-optional</i>(const std::optional&lt;U&gt;&amp; rhs);</code>
 <br/><tab/><i>Effects:</i> <tt>M_pmr</tt> is initialized with <tt>std::pmr::get_default_resource()</tt>. 
-If <tt>rhs</tt> contains a value, initializes the contained value with uses-allocator construction and 
+If <tt>rhs</tt> contains a value, initializes the contained value by uses-allocator construction 
+with allocator <tt>polymorphic_allocator&lt;&gt;(_M_pmr)</tt> and 
 <tt>*rhs</tt> as the constructor argument. 
 <br/><tab/><i>Ensures:</i> <tt>bool(rhs) == bool(*this)</tt>.
 <br/><tab/><i>Throws:</i> Any exception thrown by the selected constructor of <tt>T</tt>.
@@ -842,9 +872,10 @@ If <tt>rhs</tt> contains a value, initializes the contained value with uses-allo
 
 
 <br/>
-<br/><code>template&lt;class U&gt; explicit(see below) <i>alloc-optional</i>(std::optional&lt;U&gt;&amp;&amp; v);</code>
+<br/><code>template&lt;class U&gt; explicit(see below) <i>alloc-optional</i>(std::optional&lt;U&gt;&amp;&amp; rhs);</code>
 <br/><tab/><i>Effects:</i> <tt>M_pmr</tt> is initialized with <tt>std::pmr::get_default_resource()</tt>. 
-If <tt>rhs</tt> contains a value, initializes the contained value with uses-allocator construction and 
+If <tt>rhs</tt> contains a value, initializes the contained value by uses-allocator construction 
+with allocator <tt>polymorphic_allocator&lt;&gt;(_M_pmr)</tt> and 
 <tt>std​::​move(*rhs)</tt> as the constructor argument. <tt>bool(rhs)</tt> is unchanged.
 <br/><tab/><i>Ensures:</i> <tt>bool(rhs) == bool(*this)</tt>.
 <br/><tab/><i>Throws:</i> Any exception thrown by the selected constructor of <tt>T</tt>.
@@ -884,15 +915,15 @@ If <tt>rhs</tt> contains a value, initializes the contained value with uses-allo
     <br/>template&lt;class U = T&gt;
       <br/><tab/>explicit(see below) <i>alloc-optional</i>(allocator_arg_t, const polymorphic_allocator&lt;&gt;&amp;,U&amp;&amp;);
     <br/>template&lt;class U&gt;
-      <br/><tab/>explicit(see below) <i>alloc-optional</i>(allocator_arg_t, const polymorphic_allocator&lt;&gt;&amp;,const <i>alloc-optional</i>&lt;U&gt;&amp;;
+      <br/><tab/>explicit(see below) <i>alloc-optional</i>(allocator_arg_t, const polymorphic_allocator&lt;&gt;&amp;,const <i>alloc-optional</i>&lt;U&gt;&amp;);
     <br/>template&lt;class U&gt;
       <br/><tab/>explicit(see below) <i>alloc-optional</i>(allocator_arg_t, const polymorphic_allocator&lt;&gt;&amp;,<i>alloc-optional</i>&lt;U&gt;&amp;&amp;);
 	<br/>template&lt;class U&gt;
-      <br/><tab/>explicit(see below) <i>alloc-optional</i>(allocator_arg_t, const polymorphic_allocator&lt;&gt;&amp;,const std::optional&lt;U&gt;&amp;;
+      <br/><tab/>explicit(see below) <i>alloc-optional</i>(allocator_arg_t, const polymorphic_allocator&lt;&gt;&amp;,const std::optional&lt;U&gt;&amp;);
     <br/>template&lt;class U&gt;
       <br/><tab/>explicit(see below) <i>alloc-optional</i>(allocator_arg_t, const polymorphic_allocator&lt;&gt;&amp;,std::optional&lt;U&gt;&amp;&amp;);  
  </code>
-<br/><tab/><i>Requires:</i> <tt>uses_allocator&lt;T,polymorphic_allocator&lt;&gt;&gt;</tt> is true;
+<br/><tab/><i>Constraints:</i> <tt>uses_allocator&lt;T,polymorphic_allocator&lt;&gt;&gt;</tt> is true;
 <br/><tab/><i>Effects:</i> Equivalent to the preceding constructors except that <tt>M_pmr</tt> is initialized with <tt>a.resource()</tt>.
       </blockquote></ins></p>
 
@@ -926,7 +957,8 @@ no effect.
 <tr>
 <td><ins><tt>rhs</tt> contains a value</ins></td>
 <td><ins>assigns <tt>*rhs</tt> to the contained value</ins></td>
-<td><ins>initializes the contained value with uses-allocator construction and 
+<td><ins>initializes the contained value by uses-allocator construction 
+with allocator <tt>polymorphic_allocator&lt;&gt;(_M_pmr)</tt> and 
 <tt>*rhs</tt> as the constructor argument.</ins></td>
 </tr>
 <tr>
@@ -945,7 +977,7 @@ This operator shall be defined as deleted unless <tt>is_­copy_­constructible_�
  <tt>is_­copy_­assignable_­v&lt;T&gt;</tt> is <tt>true</tt>. 
 
 <br/>
-<br/><tt><i>alloc-optional</i>&lt;T&gt;&amp; operator=(<i>alloc-optional</i>&amp;&amp; rhs) noexcept(<i>see below</i>);;</tt>
+<br/><tt><i>alloc-optional</i>&lt;T&gt;&amp; operator=(<i>alloc-optional</i>&amp;&amp; rhs) noexcept(<i>see below</i>);</tt>
 <br/><tab/><i>Effects:</i> See Table
 <blockquote>
 <table border="1">
@@ -958,7 +990,8 @@ This operator shall be defined as deleted unless <tt>is_­copy_­constructible_�
 <tr>
 <td><ins><tt>rhs</tt> contains a value</ins></td>
 <td><ins>assigns <tt>std​::​move(*rhs)</tt> to the contained value</ins></td>
-<td><ins>initializes the contained value with uses-allocator construction and <tt>std​::​move(*rhs)</tt> as the constructor argument.</ins></td>
+<td><ins>initializes the contained value by uses-allocator construction 
+with allocator <tt>polymorphic_allocator&lt;&gt;(_M_pmr)</tt> and <tt>std​::​move(*rhs)</tt> as the constructor argument.</ins></td>
 </tr>
 <tr>
 <td><ins><tt>rhs</tt> does not contain a value</ins></td>
@@ -981,7 +1014,8 @@ This operator shall not participate in overload resolution unless <tt>is_­move_
 <br/>
 <br/><code>template&lt;class U = T&gt; <i>alloc-optional</i>&amp; operator=(U&amp;&amp; v);</code>
 <br/><tab/><i>Effects:</i> If <tt>*this</tt> contains a value, assigns <tt>std​::​forward&lt;U&gt;(v)</tt> to the contained value;
-otherwise initializes the contained value with uses-allocator construction and <tt>std​::​forward&lt;U&gt;(v)</tt> as the constructor argument.
+otherwise initializes the contained value by uses-allocator construction 
+with allocator <tt>polymorphic_allocator&lt;&gt;(_M_pmr)</tt> and <tt>std​::​forward&lt;U&gt;(v)</tt> as the constructor argument.
 <br/><tab/><i>Returns:</i> <tt>*this</tt>.
 <br/><tab/><i>Ensures:</i> <tt>*this</tt> contains a value.
 <br/><tab/><i>Remarks: If any exception is thrown, the result of the expression <tt>bool(*this)</tt> remains unchanged. 
@@ -1009,7 +1043,8 @@ the state of <tt>*val</tt> and <tt>v</tt> is determined by the exception safety 
 <tr>
 <td><ins><tt>rhs</tt> contains a value</ins></td>
 <td><ins>assigns <tt>*rhs</tt> to the contained value</ins></td>
-<td><ins>initializes the contained value with uses-allocator construction and <tt>*rhs</tt> as the constructor argument.</ins></td>
+<td><ins>initializes the contained value by uses-allocator construction 
+with allocator <tt>polymorphic_allocator&lt;&gt;(_M_pmr)</tt> and <tt>*rhs</tt> as the constructor argument.</ins></td>
 </tr>
 <tr>
 <td><ins><tt>rhs</tt> does not contain a value</ins></td>
@@ -1066,7 +1101,8 @@ This operator shall not participate in overload resolution unless
 <tr>
 <td><ins><tt>rhs</tt> contains a value</ins></td>
 <td><ins>assigns <tt> std​::​move(*rhs)</tt> to the contained value</ins></td>
-<td><ins>initializes the contained value with uses-allocator construction and <tt> std​::​move(*rhs)</tt> as the constructor argument.</ins></td>
+<td><ins>initializes the contained value by uses-allocator construction 
+with allocator <tt>polymorphic_allocator&lt;&gt;(_M_pmr)</tt> and <tt> std​::​move(*rhs)</tt> as the constructor argument.</ins></td>
 </tr>
 <tr>
 <td><ins><tt>rhs</tt> does not contain a value</ins></td>
@@ -1122,7 +1158,8 @@ This operator shall not participate in overload resolution unless
 <tr>
 <td><ins><tt>rhs</tt> contains a value</ins></td>
 <td><ins>assigns <tt>*rhs</tt> to the contained value</ins></td>
-<td><ins>initializes the contained value with uses-allocator construction and <tt>*rhs</tt> as the constructor argument.</ins></td>
+<td><ins>initializes the contained value by uses-allocator construction 
+with allocator <tt>polymorphic_allocator&lt;&gt;(_M_pmr)</tt> and <tt>*rhs</tt> as the constructor argument.</ins></td>
 </tr>
 <tr>
 <td><ins><tt>rhs</tt> does not contain a value</ins></td>
@@ -1180,7 +1217,8 @@ This operator shall not participate in overload resolution unless
 <tr>
 <td><ins><tt>rhs</tt> contains a value</ins></td>
 <td><ins>assigns <tt>*rhs</tt> to the contained value</ins></td>
-<td><ins>initializes the contained value with uses-allocator construction and <tt>*rhs</tt> as the constructor argument.</ins></td>
+<td><ins>initializes the contained value by uses-allocator construction 
+with allocator <tt>polymorphic_allocator&lt;&gt;(_M_pmr)</tt> and <tt>*rhs</tt> as the constructor argument.</ins></td>
 </tr>
 <tr>
 <td><ins><tt>rhs</tt> does not contain a value</ins></td>
@@ -1226,9 +1264,10 @@ This operator shall not participate in overload resolution unless
 
 <br/>
 <br/><code>  template&lt;class... Args&gt;> T&amp; emplace(Args&amp;&amp;...);</code>
-<br/><tab/><i>Requires:</i> <tt>is_­constructible_­v&lt;T, Args&amp;&amp;...&gt; </tt>is true.
+<br/><tab/><i>Constraints:</i> <tt>is_­constructible_­v&lt;T, Args&amp;&amp;...&gt; </tt>is true.
 <br/><tab/><i>Effects:</i> Calls <tt>*this = nullopt</tt>. Then initializes the contained value 
-with uses-allocator construction and <tt>std​::​forward&lt;Args&gt;(args)....</tt> as the constructor argument.
+by uses-allocator construction 
+with allocator <tt>polymorphic_allocator&lt;&gt;(_M_pmr)</tt> and <tt>std​::​forward&lt;Args&gt;(args)....</tt> as the constructor argument.
 <br/><tab/><i>Ensures:</i> <tt>*this</tt> contains a value.
 <br/><tab/><i>Returns:</i> A reference to the new contained value.
 <br/><tab/><i>Throws:</i> Any exception thrown by the selected constructor of <tt>T</tt>.
@@ -1238,9 +1277,10 @@ with uses-allocator construction and <tt>std​::​forward&lt;Args&gt;(args)...
 
 <br/>
 <br/><code>    template&lt;class U, class... Args&gt; T&amp; emplace(initializer_list&lt;U&gt;, Args&amp;&amp;...);</code>
-<br/><tab/><i>Requires:</i> <tt>is_­constructible_­v&lt;T, initializer_­list&lt;U&gt;&amp;, Args&amp;&amp;...&gt; </tt>is true.
+<br/><tab/><i>Constraints:</i> <tt>is_­constructible_­v&lt;T, initializer_­list&lt;U&gt;&amp;, Args&amp;&amp;...&gt; </tt>is true.
 <br/><tab/><i>Effects:</i> Calls <tt>*this = nullopt</tt>. Then initializes the contained value 
-with uses-allocator construction and <tt>il, std​::​forward&lt;Args&gt;(args)....</tt> as the constructor arguments.
+by uses-allocator construction 
+with allocator <tt>polymorphic_allocator&lt;&gt;(_M_pmr)</tt> and <tt>il, std​::​forward&lt;Args&gt;(args)....</tt> as the constructor arguments.
 <br/><tab/><i>Ensures:</i> <tt>*this</tt> contains a value.
 <br/><tab/><i>Returns:</i> A reference to the new contained value.
 <br/><tab/><i>Throws:</i> Any exception thrown by the selected constructor of <tt>T</tt>.
@@ -1253,7 +1293,7 @@ with uses-allocator construction and <tt>il, std​::​forward&lt;Args&gt;(args
 <blockquote><ins>
 
 <br/><tt>void swap(<i>alloc-optional</i>&amp; rhs);</tt>
-<br/><tab/><i>Requires:</i> Lvalues of type <tt>T</tt> shall be swappable and <tt>is_­move_­constructible_­v&lt;T&gt;</tt> is <tt>true</tt>.
+<br/><tab/><i>Constraints:</i> Lvalues of type <tt>T</tt> shall be swappable and <tt>is_­move_­constructible_­v&lt;T&gt;</tt> is <tt>true</tt>.
 <br/><tab/><i>Effects:</i> See Table x
 <blockquote><table border="1">
 <caption><ins>Table x &mdash; <tt>swap(<i>alloc-optional</i>&amp;)</tt> effects</ins></caption>
@@ -1265,13 +1305,15 @@ with uses-allocator construction and <tt>il, std​::​forward&lt;Args&gt;(args
 <tr>
 <td><ins><tt>rhs</tt> contains a value</ins></td>
 <td><ins>calls <tt>swap(*(*this), *rhs)</tt></ins></td>
-<td><ins>initializes the contained value with uses-allocator construction and 
+<td><ins>initializes the contained value by uses-allocator construction 
+with allocator <tt>polymorphic_allocator&lt;&gt;(_M_pmr)</tt> and 
 <tt>std​::​move(*rhs)</tt> as the constructor argument, followed by <tt>rhs.val->T​::​~T()</tt>; 
 postcondition is that <tt>*this</tt> contains a value and <tt>rhs</tt> does not contain a value</ins></td>
 </tr>
 <tr>
 <td><ins><tt>rhs</tt> does not contain a value</ins></td>
-<td><ins>ins>initializes the contained value with uses-allocator construction and 
+<td><ins>ins>initializes the contained value by uses-allocator construction 
+with allocator <tt>polymorphic_allocator&lt;&gt;(_M_pmr)</tt> and 
 <tt>std​::​move(*(*this))</tt> as the constructor argument, followed by <tt>val->T​::​~T()</tt>; 
 postcondition is that <tt>*this</tt> does not contain a value and <tt>rhs</tt> contains a value</ins></tt></ins></td>
 <td><ins>no effect</ins></td>
@@ -1288,21 +1330,21 @@ postcondition is that <tt>*this</tt> does not contain a value and <tt>rhs</tt> c
 
 <br/><tt>const T* operator-&gt;() const;</tt>
 <br/><tt>T* operator-&gt;();</tt>
-<br/><tab/><i>Requires:</i> <tt>*this</tt> contains a value.
+<br/><tab/><i>Expects:</i> <tt>*this</tt> contains a value.
 <br/><tab/><i>Returns:</i> <tt>val</tt>.
 <br/><tab/><i>Throws:</i> Nothing.
 
 <br/>
 <br/><tt>const T&amp; operator*() const&amp;;</tt>
 <br/><tt>T&amp; operator*() &amp;;();</tt>
-<br/><tab/><i>Requires:</i> <tt>*this</tt> contains a value.
+<br/><tab/><i>Expects:</i> <tt>*this</tt> contains a value.
 <br/><tab/><i>Returns:</i> <tt>*val</tt>.
 <br/><tab/><i>Throws:</i> Nothing.
 
 <br/>
 <br/><tt>T&amp;&amp; operator*() &amp;&amp;;</tt>
 <br/><tt>const T&amp;&amp; operator*() const&amp;&amp;; &amp;;();</tt>
-<br/><tab/><i>Requires:</i> <tt>*this</tt> contains a value.
+<br/><tab/><i>Expects:</i> <tt>*this</tt> contains a value.
 <br/><tab/><i>Effects:</i> Equivalent to:<tt> return std​::​move(*val);</tt>
 
 
@@ -1343,6 +1385,12 @@ the program is ill-formed.
 && is_­convertible_­v&lt;U&amp;&amp;, T&gt;</tt> is <tt>is_­copy_­constructible_­v&lt;T&gt; && is_­convertible_­v&lt;U&amp;&amp;, T&gt;</tt>, 
 the program is ill-formed.
 
+<br/>
+<br/><tt>pmr::polymorphic_allocator&lt;&gt; get_allocator() const noexcept;</tt>
+<br/><tab/><i>Returns:</i> <tt>pmr::polymorphic_allocator&lt;&gt;(M_pmr)</tt>.
+<br/><tab/><i>Throws:</i> nothing.
+
+
 </ins></blockquote>
 
 
@@ -1361,7 +1409,7 @@ the program is ill-formed.
 <br/><tab/>   template&lt;class T, class U&gt; bool operator==(const <i>alloc-optional</i>&lt;T&gt;&amp;, const <i>alloc-optional</i>&lt;U&gt;&amp;);
 <br/><tab/>   template&lt;class T, class U&gt; bool operator==(const <i>alloc-optional</i>&lt;T&gt;&amp;, const std::optional&lt;U&gt;&amp;);
 <br/><tab/>   template&lt;class T, class U&gt; bool operator==(const std::optional&lt;T&gt;&amp;, const <i>alloc-optional</i>&lt;U&gt;&amp;);
-<br/><tab/><i>Requires:</i> The expression <tt>*x == *y</tt> shall be well-formed and its result shall be convertible to 
+<br/><tab/><i>Mandates:</i> The expression <tt>*x == *y</tt> shall be well-formed and its result shall be convertible to 
 <tt>bool</tt>. [ <i>Note:</i> <tt>T</tt> need not be <tt>Cpp17EqualityComparable</tt>. — <i>end note</i> ]
 <br/><tab/><i>Returns:</i> If <tt>bool(x) != bool(y)</tt>, <tt>false</tt>; otherwise if <tt>bool(x) == false</tt>, <tt>true</tt>; otherwise <tt>*x == *y</tt>.
 
@@ -1370,7 +1418,7 @@ the program is ill-formed.
 <br/><tab/>   template&lt;class T, class U&gt; bool operator!=(const <i>alloc-optional</i>&lt;T&gt;&amp;, const <i>alloc-optional</i>&lt;U&gt;&amp;);
 <br/><tab/>   template&lt;class T, class U&gt;bool operator!=(const <i>alloc-optional</i>&lt;T&gt;&amp;, const std::optional&lt;U&gt;&amp;);
 <br/><tab/>   template&lt;class T, class U&gt; bool operator!=(const std::optional&lt;T&gt;&amp;, const <i>alloc-optional</i>&lt;U&gt;&amp;);
-<br/><tab/><i>Requires:</i> The expression <tt>*x != *y</tt> shall be well-formed and its result shall be convertible to 
+<br/><tab/><i>Mandates:</i> The expression <tt>*x != *y</tt> shall be well-formed and its result shall be convertible to 
 <tt>bool</tt>. 
 <br/><tab/><i>Returns:</i> If <tt>bool(x) != bool(y)</tt>, <tt>true</tt>; otherwise if <tt>bool(x) == false</tt>, <tt>false</tt>; 
 otherwise <tt>*x != *y</tt>.
@@ -1379,7 +1427,7 @@ otherwise <tt>*x != *y</tt>.
 <br/><tab/>   template&lt;class T, class U&gt; bool operator&lt;(const <i>alloc-optional</i>&lt;T&gt;&amp;, const <i>alloc-optional</i>&lt;U&gt;&amp;);
 <br/><tab/>   template&lt;class T, class U&gt; bool operator&lt;(const <i>alloc-optional</i>&lt;T&gt;&amp;, const std::optional&lt;U&gt;&amp;);
 <br/><tab/>   template&lt;class T, class U&gt; bool operator&lt;(const std::optional&lt;T&gt;&amp;, const <i>alloc-optional</i>&lt;U&gt;&amp;);
-<br/><tab/><i>Requires:</i> The expression <tt>*x &lt; *y</tt> shall be well-formed and its result shall be convertible to 
+<br/><tab/><i>Mandates:</i> The expression <tt>*x &lt; *y</tt> shall be well-formed and its result shall be convertible to 
 <tt>bool</tt>. 
 <br/><tab/><i>Returns:</i> If <tt>!y</tt>, <tt>false</tt>; otherwise if <tt>!x</tt>, <tt>true</tt>; 
 otherwise <tt>*x &lt; *y</tt>.
@@ -1390,7 +1438,7 @@ otherwise <tt>*x &lt; *y</tt>.
 <br/><tab/>   template&lt;class T, class U&gt; bool operator&gt;(const <i>alloc-optional</i>&lt;T&gt;&amp;, const <i>alloc-optional</i>&lt;U&gt;&amp;);
 <br/><tab/>   template&lt;class T, class U&gt; bool operator&gt;(const <i>alloc-optional</i>&lt;T&gt;&amp;, const std::optional&lt;U&gt;&amp;);
 <br/><tab/>   template&lt;class T, class U&gt; bool operator&gt;(const std::optional&lt;T&gt;&amp;, const <i>alloc-optional</i>&lt;U&gt;&amp;);
-<br/><tab/><i>Requires:</i> The expression <tt>*x &gt; *y</tt> shall be well-formed and its result shall be convertible to 
+<br/><tab/><i>Mandates:</i> The expression <tt>*x &gt; *y</tt> shall be well-formed and its result shall be convertible to 
 <tt>bool</tt>. 
 <br/><tab/><i>Returns:</i> If <tt>!x</tt>, <tt>false</tt>; otherwise if <tt>!y</tt>, <tt>true</tt>; 
 otherwise <tt>*x &gt; *y</tt>.
@@ -1400,7 +1448,7 @@ otherwise <tt>*x &gt; *y</tt>.
 <br/><tab/>   template&lt;class T, class U&gt; bool operator&lt;=(const <i>alloc-optional</i>&lt;T&gt;&amp;, const <i>alloc-optional</i>&lt;U&gt;&amp;);
 <br/><tab/>   template&lt;class T, class U&gt; bool operator&lt;=(const <i>alloc-optional</i>&lt;T&gt;&amp;, const std::optional&lt;U&gt;&amp;);
 <br/><tab/>   template&lt;class T, class U&gt; bool operator&lt;=(const std::optional&lt;T&gt;&amp;, const <i>alloc-optional</i>&lt;U&gt;&amp;);
-<br/><tab/><i>Requires:</i> The expression <tt>*x &lt;= *y</tt> shall be well-formed and its result shall be convertible to 
+<br/><tab/><i>Mandates:</i> The expression <tt>*x &lt;= *y</tt> shall be well-formed and its result shall be convertible to 
 <tt>bool</tt>. 
 <br/><tab/><i>Returns:</i> If <tt>!x</tt>, <tt>true</tt>; otherwise if <tt>!y</tt>, <tt>false</tt>; 
 otherwise <tt>*x &lt;= *y</tt>.
@@ -1410,7 +1458,7 @@ otherwise <tt>*x &lt;= *y</tt>.
 <br/><tab/>   template&lt;class T, class U&gt; bool operator&t;=(const <i>alloc-optional</i>&lt;T&gt;&amp;, const <i>alloc-optional</i>&lt;U&gt;&amp;);
 <br/><tab/>   template&lt;class T, class U&gt; bool operator&gt;=(const <i>alloc-optional</i>&lt;T&gt;&amp;, const std::optional&lt;U&gt;&amp;);
 <br/><tab/>   template&lt;class T, class U&gt; bool operator&gt;=(const std::optional&lt;T&gt;&amp;, const <i>alloc-optional</i>&lt;U&gt;&amp;);
-<br/><tab/><i>Requires:</i> The expression <tt>*x &gt;= *y</tt> shall be well-formed and its result shall be convertible to 
+<br/><tab/><i>Mandates:</i> The expression <tt>*x &gt;= *y</tt> shall be well-formed and its result shall be convertible to 
 <tt>bool</tt>. 
 <br/><tab/><i>Returns:</i> If <tt>!y</tt>, <tt>true</tt>; otherwise if <tt>!x</tt>, <tt>false</tt>; 
 otherwise <tt>*x &gt;= *y</tt>.
@@ -1445,72 +1493,72 @@ otherwise <tt>*x &gt;= *y</tt>.
 <blockquote><ins>
 
 <br/><tab/>   template&lt;class T, class U&gt; bool operator==(const <i>alloc-optional</i>&lt;T&gt;&amp; x, const U&amp; v);
-<br/><tab/><i>Requires:</i> The expression <tt>*x == v</tt> shall be well-formed and its result shall be convertible to <tt>bool</tt>. 
+<br/><tab/><i>Mandates:</i> The expression <tt>*x == v</tt> shall be well-formed and its result shall be convertible to <tt>bool</tt>. 
 [ <tt>Note:</tt> <tt>T</tt> need not be <tt>Cpp17EqualityComparable</tt>. — <tt>end note </tt>]
 <br/><tab/><i>Effects: </i> Equivalent to: <tt>return bool(x) ? *x == v : false;</tt>
 
 
 <br/>
 <br/><tab/>   template&lt;class T, class U&gt; bool operator==(const T&amp; t, const <i>alloc-optional</i>&lt;U&gt;&amp; v);
-<br/><tab/><i>Requires:</i> The expression <tt>x == *v</tt> shall be well-formed and its result shall be convertible to <tt>bool</tt>. 
+<br/><tab/><i>Mandates:</i> The expression <tt>x == *v</tt> shall be well-formed and its result shall be convertible to <tt>bool</tt>. 
 <br/><tab/><i>Effects: </i> Equivalent to: <tt>return bool(v) ? x == *v : false;</tt>
 
 <br/>
 <br/><tab/>   template&lt;class T, class U&gt; bool operator!=(const <i>alloc-optional</i>&lt;T&gt;&amp; u, const U&amp; v);
-<br/><tab/><i>Requires:</i> The expression <tt>*x != v</tt> shall be well-formed and its result shall be convertible to <tt>bool</tt>. 
+<br/><tab/><i>Mandates:</i> The expression <tt>*x != v</tt> shall be well-formed and its result shall be convertible to <tt>bool</tt>. 
 <br/><tab/><i>Effects: </i> Equivalent to: <tt>return bool(x) ? *x != v : true;</tt>
 
 <br/>
 <br/><tab/>   template&lt;class T, class U&gt; bool operator!=(const T&amp; t, const <i>alloc-optional</i>&lt;U&gt;&amp; v);
-<br/><tab/><i>Requires:</i> The expression <tt>x != *v</tt> shall be well-formed and its result shall be convertible to <tt>bool</tt>. 
+<br/><tab/><i>Mandates:</i> The expression <tt>x != *v</tt> shall be well-formed and its result shall be convertible to <tt>bool</tt>. 
 <br/><tab/><i>Effects: </i> Equivalent to: <tt>return bool(v) ? x != *v : true;</tt>
 
 
 <br/>
 <br/><tab/>   template&lt;class T, class U&gt; bool operator&lt;(const <i>alloc-optional</i>&lt;T&gt;&amp;, const U&amp;);
-<br/><tab/><i>Requires:</i> The expression <tt>*x &lt; v</tt> shall be well-formed and its result shall be convertible to <tt>bool</tt>. 
+<br/><tab/><i>Mandates:</i> The expression <tt>*x &lt; v</tt> shall be well-formed and its result shall be convertible to <tt>bool</tt>. 
 <br/><tab/><i>Effects: </i> Equivalent to: <tt>return bool(x) ? *x &lt; v : true;</tt>
 
 
 <br/>
 <br/><tab/>   template&lt;class T, class U&gt; bool operator&lt;(const T&amp; t, const <i>alloc-optional</i>&lt;U&gt;&amp; v);
-<br/><tab/><i>Requires:</i> The expression <tt>x &lt; *v</tt> shall be well-formed and its result shall be convertible to <tt>bool</tt>. 
+<br/><tab/><i>Mandates:</i> The expression <tt>x &lt; *v</tt> shall be well-formed and its result shall be convertible to <tt>bool</tt>. 
 <br/><tab/><i>Effects: </i> Equivalent to: <tt>return bool(v) ? x &lt; *v : false;</tt>
 
 
 <br/>
 <br/><tab/>   template&lt;class T, class U&gt; bool operator&gt;(const <i>alloc-optional</i>&lt;T&gt;&amp;, const U&amp;);
-<br/><tab/><i>Requires:</i> The expression <tt>*x &gt; v</tt> shall be well-formed and its result shall be convertible to <tt>bool</tt>. 
+<br/><tab/><i>Mandates:</i> The expression <tt>*x &gt; v</tt> shall be well-formed and its result shall be convertible to <tt>bool</tt>. 
 <br/><tab/><i>Effects: </i> Equivalent to: <tt>return bool(x) ? *x &gt; v : false;</tt>
 
 
 <br/>
 <br/><tab/>   template&lt;class T, class U&gt; bool operator&gt;(const T&amp; t, const <i>alloc-optional</i>&lt;U&gt;&amp; v);
-<br/><tab/><i>Requires:</i> The expression <tt>x &gt; *v</tt> shall be well-formed and its result shall be convertible to <tt>bool</tt>. 
+<br/><tab/><i>Mandates:</i> The expression <tt>x &gt; *v</tt> shall be well-formed and its result shall be convertible to <tt>bool</tt>. 
 <br/><tab/><i>Effects: </i> Equivalent to: <tt>return bool(v) ? x &gt; *v : true;</tt>
 
 
 <br/>
 <br/><tab/>   template&lt;class T, class U&gt; bool operator&lt;=(const <i>alloc-optional</i>&lt;T&gt;&amp;, const U&amp;);
-<br/><tab/><i>Requires:</i> The expression <tt>*x &lt;= v</tt> shall be well-formed and its result shall be convertible to <tt>bool</tt>. 
+<br/><tab/><i>Mandates:</i> The expression <tt>*x &lt;= v</tt> shall be well-formed and its result shall be convertible to <tt>bool</tt>. 
 <br/><tab/><i>Effects: </i> Equivalent to: <tt>return bool(x) ? *x &lt;= v : true;</tt>
 
 
 <br/>
 <br/><tab/>   template&lt;class T, class U&gt; bool operator&lt;=(const T&amp; t, const <i>alloc-optional</i>&lt;U&gt;&amp; v);
-<br/><tab/><i>Requires:</i> The expression <tt>x &lt;= *v</tt> shall be well-formed and its result shall be convertible to <tt>bool</tt>. 
+<br/><tab/><i>Mandates:</i> The expression <tt>x &lt;= *v</tt> shall be well-formed and its result shall be convertible to <tt>bool</tt>. 
 <br/><tab/><i>Effects: </i> Equivalent to: <tt>return bool(v) ? x &lt;= *v : false;</tt>
 
 
 <br/>
 <br/><tab/>   template&lt;class T, class U&gt; bool operator&gt;=(const <i>alloc-optional</i>&lt;T&gt;&amp;, const U&amp;);
-<br/><tab/><i>Requires:</i> The expression <tt>*x &gt;= v</tt> shall be well-formed and its result shall be convertible to <tt>bool</tt>. 
+<br/><tab/><i>Mandates:</i> The expression <tt>*x &gt;= v</tt> shall be well-formed and its result shall be convertible to <tt>bool</tt>. 
 <br/><tab/><i>Effects: </i> Equivalent to: <tt>return bool(x) ? *x &gt;= v : false;</tt>
 
 
 <br/>
 <br/><tab/>   template&lt;class T, class U&gt; bool operator&gt;=(const T&amp; t, const <i>alloc-optional</i>&lt;U&gt;&amp; v);
-<br/><tab/><i>Requires:</i> The expression <tt>x &gt;= *v</tt> shall be well-formed and its result shall be convertible to <tt>bool</tt>. 
+<br/><tab/><i>Mandates:</i> The expression <tt>x &gt;= *v</tt> shall be well-formed and its result shall be convertible to <tt>bool</tt>. 
 <br/><tab/><i>Effects: </i> Equivalent to: <tt>return bool(v) ? x &gt;= *v : true;</tt>
 
 
@@ -1555,19 +1603,19 @@ expression <tt>T(il, std​::​forward&lt;Args&gt;(args)...)</tt> is a core con
 <br/>
 <br/><tab/>   template&lt;class T, optional&lt;decay_­t&lt;T&gt;&gt; 
 <br/><tab2/>  alloc_optional(const polymorphic_allocator&lt;&gt;&amp; a, T&amp;&amp;);
-<br/><tab/><i>Requires:</i> <tt>uses_allocator&lt;T,polymorphic_allocator&lt;&gt;&gt;</tt> is true;
+<br/><tab/><i>Mandates:</i> <tt>uses_allocator&lt;T,polymorphic_allocator&lt;&gt;&gt;</tt> is true;
 <br/><tab/><i>Returns: </i> <tt>optional&lt;decay_­t&lt;T&gt;&gt;(in_place, allocator_arg, a, std​::​forward&lt;T&gt;(v)).</tt>
 
 <br/>
 <br/><tab/>   template&lt;class T, class... Args> optional&lt;T&gt; 
 <br/><tab2/>  alloc_optional(const polymorphic_allocator&lt;&gt;&amp; a, Args&amp;&amp;... args);
-<br/><tab/><i>Requires:</i> <tt>uses_allocator&lt;T,polymorphic_allocator&lt;&gt;&gt;</tt> is true;
+<br/><tab/><i>Mandates:</i> <tt>uses_allocator&lt;T,polymorphic_allocator&lt;&gt;&gt;</tt> is true;
 <br/><tab/><i>Effects: </i> Equivalent to: <tt> return optional&lt;T&gt(in_place, allocator_arg, a, std​::​forward&lt;Args&gt;(args)...).</tt>
 
 <br/>
 <br/><tab/>   template&lt;class T, class U, class... Args> optional&lt;T&gt;
 <br/><tab2/>  alloc_optional(const polymorphic_allocator&lt;&gt;&amp; a, initializer_list&lt;U&gt; il, Args&amp;&amp;... args);
-<br/><tab/><i>Requires:</i> <tt>uses_allocator&lt;T,polymorphic_allocator&lt;&gt;&gt;</tt> is true;
+<br/><tab/><i>Mandates:</i> <tt>uses_allocator&lt;T,polymorphic_allocator&lt;&gt;&gt;</tt> is true;
 <br/><tab/><i>Effects: </i> Equivalent to: <tt> return optional&lt;T&gt(in_place, allocator_arg, a, il, std​::​forward&lt;Args&gt;(args)...).</tt>
 
 </ins></blockquote>
