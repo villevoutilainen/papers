@@ -674,6 +674,8 @@ namespace std::pmr {
 <br/><tab2/>    const T&amp;&amp; value() const&amp;&amp;;
 <br/><tab2/>    template&lt;class U&gt; T value_or(U&amp;&amp;) const&amp;;
 <br/><tab2/>    template&lt;class U&gt; T value_or(U&amp;&amp;) &amp;&amp;;
+<br/><tab2/>    pmr::polymorphic_allocator&lt;&gt; get_allocator() const noexcept;
+
 <br/>
  <br/><tab2/>   // [<i>alloc-optional</i>.mod], modifiers
 <br/><tab2/>    void reset() noexcept;
@@ -1382,6 +1384,12 @@ the program is ill-formed.
 <br/><tab/><i>Remarks:</i> If <tt>is_­move_­constructible_­v&lt;T&gt; 
 && is_­convertible_­v&lt;U&amp;&amp;, T&gt;</tt> is <tt>is_­copy_­constructible_­v&lt;T&gt; && is_­convertible_­v&lt;U&amp;&amp;, T&gt;</tt>, 
 the program is ill-formed.
+
+<br/>
+<br/><tt>pmr::polymorphic_allocator&lt;&gt; get_allocator() const noexcept;</tt>
+<br/><tab/><i>Returns:</i> <tt>pmr::polymorphic_allocator&lt;&gt;(M_pmr)</tt>.
+<br/><tab/><i>Throws:</i> nothing.
+
 
 </ins></blockquote>
 
