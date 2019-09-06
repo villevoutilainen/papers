@@ -145,8 +145,7 @@ Add new paragraphs after 20.6.1/p1 [optional.general]
 <ins>
 [2] <tt>pmr::optional</tt> is an alias template such that for a type <tt>T</tt>, where
 <tt>uses_allocator&lt;T, polymorphic_allocator&lt;&gt;&gt;</tt> is true, <tt>pmr::optional&lt;T&gt;</tt>
-denotes a type which will construct the contained object with uses_allocator_construction 
-<tt>[allocator.uses.construction]</tt> with an object of type <tt>polymorphic_allocator&lt;&gt;</tt>. 
+denotes a type which will construct the contained object with an allocator of type <tt>polymorphic_allocator&lt;&gt;</tt>. 
 Otherwise, the alias template denotes <tt>std::optional</tt>. </ins></p></blockquote>
 <br/>
 
@@ -696,14 +695,14 @@ When an instance of <i>alloc-optional</i>&lt;T&gt; contains a value, it means th
 referred to as the <i>alloc-optional</i> object's contained value, 
 is allocated within the storage of the <i>alloc-optional</i> object. Implementations are not permitted to use 
 additional storage, such as dynamic memory, to allocate its contained value. The contained value shall be allocated in a 
-region of the <i>alloc-optional</i>&lt;T&gt; storage suitably aligned for the type <tt>T</tt> and constructed with uses-allocator construction. 
+region of the <i>alloc-optional</i>&lt;T&gt; storage suitably aligned for the type <tt>T</tt> and constructed using <tt>M_pmr</tt>. 
 When an object of type <i>alloc-optional</i>&lt;T&gt; is contextually 
 converted to bool, the conversion returns true if the object contains a value; otherwise the conversion returns false.
 </ins></blockquote>
 <blockquote><ins>Member <tt>val</tt> is provided for exposition only. When an <i>alloc-optional</i>&lt;T&gt; 
 object contains a value, val points to the contained value.
 </ins></blockquote>
-<blockquote><ins>Member <tt>M_pmr</tt> is provided for exposition only and points to the memory_resource passed to the uses-allocator construction when
+<blockquote><ins>Member <tt>M_pmr</tt> is provided for exposition only and points to the memory_resource used when
 creating the contained value.</tt>.
 </ins></blockquote>
 <blockquote><ins><tt>T</tt> shall be a type other than <tt><i>cv</i> in_­place_­t</tt>, <tt><i>cv</i> allocator_arg_­t</tt>, or <tt><i>cv</i> nullopt_­t</tt> 
@@ -721,9 +720,8 @@ that meets the <i>Cpp17Destructible</i> requirements (Table 30).</ins></blockquo
 <br/>
 <br/><code><i>alloc-optional</i>(const <i>alloc-optional</i>&amp;);</code>
 <br/><tab/><i>Effects:</i> <tt>M_pmr</tt> is initialized with <tt>rhs.M_pmr</tt>. 
-If <tt>rhs</tt> contains a value, initializes the contained value by uses-allocator construction 
-with allocator <tt>polymorphic_allocator&lt;&gt;(_M_pmr)</tt> and the expression <tt>*rhs</tt>
-as the constructor argument.
+If <tt>rhs</tt> contains a value, initializes the contained value 
+with the expression <tt>*rhs</tt>.
 <br/><tab/><i>Ensures:</i> <tt>bool(rhs) == bool(*this)</tt>.
 <br/><tab/><i>Throws:</i> Any exception thrown by the selected constructor of <tt>T</tt>.
 <br/><tab/><i>Remarks:</i> This constructor shall be defined as deleted unless <tt>is_­copy_­constructible_­v&lt;T&gt;</tt> is true.
@@ -731,9 +729,8 @@ as the constructor argument.
 <br/>
 <br/><code><i>alloc-optional</i>(<i>alloc-optional</i>&amp;&amp; rhs) noexcept(see below)</code>
 <br/><tab/><i>Effects:</i> <tt>M_pmr</tt> is initialized with <tt>rhs.M_pmr</tt>. 
-If <tt>rhs</tt> contains a value, initializes the contained value by uses-allocator construction 
-with allocator <tt>polymorphic_allocator&lt;&gt;(_M_pmr)</tt> and 
-<tt>std​::​move(*rhs)</tt> as the constructor argument. <tt>bool(rhs)</tt> is unchanged.
+If <tt>rhs</tt> contains a value, initializes the contained value
+with the expression <tt>std​::​move(*rhs)</tt>. <tt>bool(rhs)</tt> is unchanged.
 <br/><tab/><i>Ensures:</i> <tt>bool(rhs) == bool(*this)</tt>.
 <br/><tab/><i>Throws:</i> Any exception thrown by the selected constructor of <tt>T</tt>.
 <br/><tab/><i>Remarks:</i> The expression inside <tt>noexcept</tt> is equivalent to <tt>is_­nothrow_­move_­constructible_­v&lt;T&gt;</tt>. 
