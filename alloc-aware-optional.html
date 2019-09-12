@@ -1297,7 +1297,7 @@ with allocator <tt>polymorphic_allocator&lt;&gt;(_M_pmr)</tt> and <tt>il, std​
 
 <br/><tt>void swap(<i>alloc-optional</i>&amp; rhs);</tt>
 <br/><tab/><i>Constraints:</i> Lvalues of type <tt>T</tt> shall be swappable and <tt>is_­move_­constructible_­v&lt;T&gt;</tt> is <tt>true</tt>.
-<br/><tab/><i>Mandates:</i> <tt>a.get_allocator() == b.get_allocator()</tt>.
+<br/><tab/><i>Expects:</i> <tt>a.get_allocator() == b.get_allocator()</tt>.
 <br/><tab/><i>Effects:</i> See Table x
 <blockquote><table border="1">
 <caption><ins>Table x &mdash; <tt>swap(<i>alloc-optional</i>&amp;)</tt> effects</ins></caption>
