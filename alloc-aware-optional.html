@@ -74,23 +74,6 @@ Audience: LEWG
   doesn't change the type, nor does it change the size of the type.
 </p>
 
-<h2>Rationale for explicit specialization of uses_allocator for
-   the allocator-aware optional type </h2>
-
-<p>
-  In the proposal, the unnamed concrete allocator-aware optional
-  type, i.e. <i>alloc-optional</i>, is only every used for a type for which 
-  uses_allocator&lt;T, polymorphic_allocator&lt;&gt;&gt;</tt> is true.
-  However, one can still imagine a situation in which a user
-  instantiates <i>alloc-optional</i> with a type for which 
-  uses_allocator&lt;T, polymorphic_allocator&lt;&gt;&gt;</tt> is false.
-  This is why we decided against a 
-  <tt>using allocator_type = pmr::polymorphic_allocator&lt;&gt;;</tt>
-  declaration inside <i>alloc-optional</i>. The proposed explicit specialization
-  takes into account whether the value type 
-  uses_allocator&lt;T, polymorphic_allocator&lt;&gt;&gt;</tt> or not.
-</p>
-
 
 <h2>In general, some remarks about triviality</h2>
 
@@ -148,6 +131,29 @@ Add new paragraphs after 20.6.1/p1 [optional.general]
 denotes a type which will construct the contained object with an allocator of type <tt>polymorphic_allocator&lt;&gt;</tt>. 
 Otherwise, the alias template denotes <tt>std::optional</tt>. </ins></p></blockquote>
 <br/>
+
+
+<p>Modify 20.6.2 Header <optional> synopsisl [optional.syn] </p>
+<p>
+<blockquote>
+<br/>namespace std {
+<br/><tab/> // [optional.optional], class template optional
+<br/><tab/> template&lt;classT&gt;
+<br/><tab2/>class optional;
+<ins>
+<br/> }
+<br/>namespace pmr {
+<br/><tab/> // [alloc-optional.pmroptional], class template <i>alloc-optional</i>
+<br/><tab/> template&lt;classT&gt;
+<br/><tab2/>class <i>alloc-optional</i>;
+<br/><tab></tab>	template&lt;typename T&gt;
+<br/><tab2></tab2> 	using optional = conditional_t&lt;uses_allocator&lt;T, polymorphic_allocator&lt;&gt;&gt;::value,
+<br/><tab2/><tab2/><i>alloc-optional</i>&lt;T&gt; , std::optional&lt;T&gt;&gt;;
+<br/> }
+<br/>namespace std {
+</ins>
+<br/> ...
+</blockquote>
 
 
 <p>Modify 20.6.3 Class template optional [optional.optional] </p>
@@ -484,10 +490,6 @@ Insert new sections after 20.6.3 Class template optional [optional.optional]
 
 <blockquote><ins><code>
 namespace pmr {
-<br/><tab></tab>	template&lt;typename T&gt;
-<br/><tab2></tab2> 	using optional = conditional_t&lt;uses_allocator&lt;T, polymorphic_allocator&lt;&gt;&gt;::value,
-<br/><tab2/><tab2/><i>alloc-optional</i>&lt;T&gt; , std::optional&lt;T&gt;&gt;;
-<br/>		  
 <br/><tab/>  // [alloc-optional.optional], class template <t><i>alloc-optional</i></t> for exposition only
 <br/><tab/>   template&lt;class T&gt;
 <br/><tab2/>     class <i>alloc-optional</i>;
@@ -582,12 +584,13 @@ namespace pmr {
  <br/><tab/> // [<i>alloc-optional</i>.hash], hash support
 <br/><tab/>   template&lt;class T&gt; struct hash&lt;<i>alloc-optional</i>&lt;T&gt;&gt;;
 <br/>}
-
+<!-- 
 <br/> namespace std {
 <br/><tab/> template&lt;typename T&gt;
- <br/><tab2/>   struct uses_allocator&lt;<i>alloc-optional</i>&lt;T&gt;, pmr::polymorphic_allocator&lt;&gt;&gt; 
+<br/><tab2/>   struct uses_allocator&lt;<i>alloc-optional</i>&lt;T&gt;, pmr::polymorphic_allocator&lt;&gt;&gt; 
  <br/><tab2/><tab/> : public uses_allocator&lt;T, pmr::polymorphic_allocator&lt;&gt;&gt;::type { };
 <br/>}
+-->
 </code></ins></blockquote></p>
 
 <p><h3><ins> Class template <i>alloc-optional</i>  [<i>alloc-optional</i>.pmroptional]</ins></h3></p>
@@ -599,6 +602,7 @@ namespace std::pmr {
 <br/><tab/> class <i>alloc-optional</i> {
 <br/><tab/> public:
 <br/><tab2/> using value_type = T;
+<br/><tab2/> using allocator_type = std::pmr::polymorphic_allocator&lt;&gt;;
 <br/>
 <br/><tab2/>    // [<i>alloc-optional</i>.ctor], constructors
     <br/><tab2/><i>alloc-optional</i>() noexcept;
@@ -673,7 +677,7 @@ namespace std::pmr {
 <br/><tab2/>    const T&amp;&amp; value() const&amp;&amp;;
 <br/><tab2/>    template&lt;class U&gt; T value_or(U&amp;&amp;) const&amp;;
 <br/><tab2/>    template&lt;class U&gt; T value_or(U&amp;&amp;) &amp;&amp;;
-<br/><tab2/>    pmr::polymorphic_allocator&lt;&gt; get_allocator() const noexcept;
+<br/><tab2/>    allocator_type get_allocator() const noexcept;
 
 <br/>
  <br/><tab2/>   // [<i>alloc-optional</i>.mod], modifiers
@@ -703,7 +707,11 @@ converted to bool, the conversion returns true if the object contains a value; o
 object contains a value, val points to the contained value.
 </ins></blockquote>
 <blockquote><ins>Member <tt>M_pmr</tt> is provided for exposition only and points to the memory_resource used when
-creating the contained value.</tt>.
+creating the contained value. If the value type provides <tt>get_allocator()</tt> member function, and its return type is 
+convertible to <tt>polymorphic_allocator&lt;&gt;</tt>, the implementation is 
+allowed to assume that the allocator used for constructing the element is the same allocator as returned 
+by <tt>T::get_allocator()</tt>. [<i>Note:</i> In such an implementation, <tt>pmr::optional&lt;pmr::string&gt;</tt> 
+will be zero-overhead compared to <tt>optional&lt;pmr::string&gt;</tt>. -- <i>end note</i>]
 </ins></blockquote>
 <blockquote><ins><tt>T</tt> shall be a type other than <tt><i>cv</i> in_­place_­t</tt>, <tt><i>cv</i> allocator_arg_­t</tt>, or <tt><i>cv</i> nullopt_­t</tt> 
 that meets the <i>Cpp17Destructible</i> requirements (Table 30).</ins></blockquote>
@@ -1291,6 +1299,7 @@ with allocator <tt>polymorphic_allocator&lt;&gt;(_M_pmr)</tt> and <tt>il, std​
 
 <br/><tt>void swap(<i>alloc-optional</i>&amp; rhs);</tt>
 <br/><tab/><i>Constraints:</i> Lvalues of type <tt>T</tt> shall be swappable and <tt>is_­move_­constructible_­v&lt;T&gt;</tt> is <tt>true</tt>.
+<br/><tab/><i>Expects:</i> <tt>a.get_allocator() == b.get_allocator()</tt>.
 <br/><tab/><i>Effects:</i> See Table x
 <blockquote><table border="1">
 <caption><ins>Table x &mdash; <tt>swap(<i>alloc-optional</i>&amp;)</tt> effects</ins></caption>
@@ -1309,7 +1318,7 @@ postcondition is that <tt>*this</tt> contains a value and <tt>rhs</tt> does not 
 </tr>
 <tr>
 <td><ins><tt>rhs</tt> does not contain a value</ins></td>
-<td><ins>ins>initializes the contained value by uses-allocator construction 
+<td><ins>initializes the contained value by uses-allocator construction 
 with allocator <tt>polymorphic_allocator&lt;&gt;(_M_pmr)</tt> and 
 <tt>std​::​move(*(*this))</tt> as the constructor argument, followed by <tt>val->T​::​~T()</tt>; 
 postcondition is that <tt>*this</tt> does not contain a value and <tt>rhs</tt> contains a value</ins></tt></ins></td>
@@ -1317,7 +1326,6 @@ postcondition is that <tt>*this</tt> does not contain a value and <tt>rhs</tt> c
 </tr>
 </table></blockquote>
 <br/><tab/><i>Throws:</i> Any exceptions thrown by the operations in the relevant part of Table x.
-
 </ins></blockquote>
 
 
@@ -1383,7 +1391,7 @@ the program is ill-formed.
 the program is ill-formed.
 
 <br/>
-<br/><tt>pmr::polymorphic_allocator&lt;&gt; get_allocator() const noexcept;</tt>
+<br/><tt>allocator_type get_allocator() const noexcept;</tt>
 <br/><tab/><i>Returns:</i> <tt>pmr::polymorphic_allocator&lt;&gt;(M_pmr)</tt>.
 <br/><tab/><i>Throws:</i> nothing.
 
