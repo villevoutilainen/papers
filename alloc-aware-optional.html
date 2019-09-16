@@ -707,8 +707,10 @@ converted to bool, the conversion returns true if the object contains a value; o
 object contains a value, val points to the contained value.
 </ins></blockquote>
 <blockquote><ins>Member <tt>M_pmr</tt> is provided for exposition only and points to the memory_resource used when
-creating the contained value. If the value type provides <tt>get_allocator()</tt> member function, the implementation is 
-allowed to omit M_pmr member. [<i>Note:</i> In such an implementation, <tt>pmr::optional&lt;pmr::string&gt;</tt> 
+creating the contained value. If the value type provides <tt>get_allocator()</tt> member function, and its return type is 
+convertible to <tt>polymorphic_allocator&lt;&gt;</tt>, the implementation is 
+allowed to assume that the allocator used for constructing the element is the same allocator as returned 
+by <tt>T::get_allocator()</tt>. [<i>Note:</i> In such an implementation, <tt>pmr::optional&lt;pmr::string&gt;</tt> 
 will be zero-overhead compared to <tt>optional&lt;pmr::string&gt;</tt>. -- <i>end note</i>]
 </ins></blockquote>
 <blockquote><ins><tt>T</tt> shall be a type other than <tt><i>cv</i> in_­place_­t</tt>, <tt><i>cv</i> allocator_arg_­t</tt>, or <tt><i>cv</i> nullopt_­t</tt> 
