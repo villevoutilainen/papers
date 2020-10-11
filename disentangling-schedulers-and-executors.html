@@ -126,5 +126,90 @@ Audience: LEWG, SG1
   but that's <code>schedule(make_error_ignoring_scheduler(foo))</code>,
   not <code>schedule(foo)</code>.
 </p>
+
+<h2>Changes to P0443</h2>
+
+<p>
+  In 2.2.3.5 execution::connect, remove the third bullet:
+</p>
+
+<ul>
+  <del><li>Otherwise, as-operation{s, r}, if
+    <ul>
+      <li>r is not an instance of as-receiver&lt;F, S'> for some type F where S and S' name the same type ignoring cv and reference qualifiers, and</li>
+
+    <li>receiver_of&lt;R&gt; && executor-of-impl&lt;remove_cvref_t&lt;S&gt;, as-invocable&lt;remove_cvref_t&lt;R&gt;, S&gt;&gt; is true,</li>
+</ul>
+<p>where as-operation is an implementation-defined class equivalent to</p>
+<pre>
+  struct as-operation {
+    remove_cvref_t&lt;S&gt; e_;
+    remove_cvref_t&lt;R&gt; r_;
+    void start() noexcept try {
+      execution::execute(std::move(e_), as-invocable&lt;remove_cvref_t&lt;R&gt;, S&gt;{r_});
+    } catch(...) {
+      execution::set_error(std::move(r_), current_exception());
+    }
+  };
+</pre>
+<p>and as-invocable is a class template equivalent to the following:</p>
+
+<pre>  template&lt;class R, class&gt;
+  struct as-invocable {
+    R* r_;
+    explicit as-invocable(R& r) noexcept
+      : r_(std::addressof(r)) {}
+    as-invocable(as-invocable && other) noexcept
+      : r_(std::exchange(other.r_, nullptr)) {}
+    ~as-invocable() {
+      if(r_)
+        execution::set_done(std::move(*r_));
+    }
+    void operator()() & noexcept try {
+      execution::set_value(std::move(*r_));
+      r_ = nullptr;
+    } catch(...) {
+      execution::set_error(std::move(*r_), current_exception());
+      r_ = nullptr;
+    }
+  };</pre></li></del>
+
+<li>Otherwise, execution::connect(s, r) is ill-formed.</li>
+</ul>
+
+<p>
+  In 2.2.3.8 execution::schedule, remove the third bullet:
+</p>
+<ul>
+<del><li>Otherwise, as-sender&lt;remove_cvref_t&lt;S&gt;&gt;{s} if S satisfies executor, where as-sender is an implementation-defined class template equivalent to
+
+<pre>  template&lt;class E&gt;
+  struct as-sender {
+  private:
+    E ex_;
+  public:
+    template&lt;template&lt;class...&gt; class Tuple, template&lt;class...&gt; class Variant&gt;
+      using value_types = Variant&lt;Tuple&lt;&gt;&gt;;
+    template&lt;template&lt;class...&gt; class Variant&gt;
+      using error_types = Variant&lt;std::exception_ptr&gt;;
+    static constexpr bool sends_done = true;
+
+    explicit as-sender(E e) noexcept
+      : ex_((E&&) e) {}
+    template&lt;class R&gt;
+      requires receiver_of&lt;R&gt;
+    connect_result_t&lt;E, R&gt; connect(R&& r) && {
+      return execution::connect((E&&) ex_, (R&&) r);
+    }
+    template&lt;class R&gt;
+      requires receiver_of&lt;R&gt;
+    connect_result_t&lt;const E &, R&gt; connect(R&& r) const & {
+      return execution::connect(ex_, (R&&) r);
+    }
+  };
+</pre></li></del>
+<li>Otherwise, execution::schedule(s) is ill-formed.</li>
+</ul>
+
 </body>
 </html>
