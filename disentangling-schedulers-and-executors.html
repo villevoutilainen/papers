@@ -1,0 +1,130 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+	<title>Disentangling schedulers and executors</title>
+
+	<style>
+	p {text-align:justify}
+	li {text-align:justify}
+	blockquote.note
+	{
+		background-color:#E0E0E0;
+		padding-left: 15px;
+		padding-right: 15px;
+		padding-top: 1px;
+		padding-bottom: 1px;
+	}
+	ins {color:#00A000}
+	del {color:#A00000}
+	</style>
+</head>
+<body>
+
+<address align=right>
+Document number: D????
+<br/>
+Audience: LEWG, SG1
+<br/>
+<br/>
+<a href="mailto:ville.voutilainen@gmail.com">Ville Voutilainen</a><br/>
+2020-10-11<br/>
+</address>
+<hr/>
+<h1 align=center>Disentangling schedulers and executors</h1>
+
+<h2>Abstract</h2>
+
+<p>
+  This proposal proposes to simplify the design of schedulers and executors,
+  providing a single conversion facility from an executor to a scheduler,
+  removing the non-scheduler/sender/receiver facilities from
+  schedule and connect, and keeping the ability to execute on either
+  a scheduler or an executor.
+</p>
+
+<h3>Why?</h3>
+
+<p>
+  Schedulers and executors are apples and oranges. Schedulers, senders,
+  and receivers establish a generic protocol that is knit together
+  so as to facilitate generic programming and algorithms that can
+  operate within the framework of that protocol, transforming in various
+  ways what senders and receivers do. Executors do not work with this
+  protocol, because they do not provide two thirds of it; namely,
+  they do not provide any means to ever invoke set_error or set_done.
+</p>
+<p>
+  Therefore treating an executor as a scheduler is akin to a lossy
+  conversion. The conversion is sufficiently lossy that it would be unwise
+  if it Just Happens without any indication in source code. That's why
+  multiple reviewers have suggested that that conversion should be
+  explicit. This proposal makes it explicit.
+</p>
+<p>
+  Once we accept that an executor shouldn't just be treated as a scheduler,
+  we also realize that there's no point in providing support for plain
+  invocable function objects for connecting them to senders directly.
+  Such an operation is every bit as lossy as treating an executor as
+  a scheduler. It should be likewise explicit, and there's no reason
+  to provide it in the fundamental building blocks; a separate algorithm
+  can be provided that connects a plain invocable to a sender.
+</p>
+
+<h3>How?</h3>
+
+<ol>
+  <li><code>schedule()</code> operates on schedulers only.</li>
+  <li><code>execute()</code> is a customization point that can operate on a scheduler
+    or an executor. This is fine, since execute() is a fire-and-forget
+    one-way call, and thus it's acceptable that it doesn't support
+    the senders&amp;receivers protocol.</li>
+  <li>All senders&amp;receivers-related operations, like <code>connect()</code>,
+    operate on senders&amp;receivers only.</li>
+  <li>There is a conversion function that takes anything
+    that has a <code>.execute()</code> (including executors), and converts it
+    to a scheduler. The working name for this function
+    is <code>make_error_ignoring_scheduler()</code>, because that's what it does.
+</ol>
+
+<h2>Rumination</h2>
+
+<h3>The current design is complex, confusing, and error-prone</h3>
+
+<p>
+  The current design allows execute() on anything, schedule() on anything,
+  connect() on anything. But that makes no sense; execute() is okay
+  as a one-way fire-and-forget mechanism, but schedule() on an executor
+  tosses in the wind the <code>set_error/set_done</code> parts. Those
+  parts are absolutely necessary for some senders&amp;receivers use
+  cases to work. Padding them in with operations that e.g.
+  <code>terminate</code> shouldn't just happen willy-nilly. Otherwise
+  it becomes impossible to reason about generic code, and to trust
+  that senders are actual senders, receivers are actual receivers,
+  and that the senders&amp;receivers protocol actually works.
+</p>
+
+<p>
+  This proposal makes the design clearer. In order to make the jump
+  from executors (which don't conform to any protocol) to senders&amp;receivers,
+  there is exactly one conversion operation that crosses that bridge
+  (or rather jumps over the river when there is no bridge)
+  Otherwise, the separate worlds are kept separate.
+</p>
+<p>
+  Once in a senders&amp;receivers world, all operations related to them
+  work as expected. The cross-river jump mentioned before is easy
+  to find, and is greppable. One doesn't need to look at all operations,
+  including <code>schedule</code> and <code>connect</code> and wonder
+  whether they're operating on a scheduler and a sender or perhaps
+  an executor and an invocable.
+</p>
+<p>
+  It's still perfectly plausible to provide a function that queues
+  a plain invocable to run as an error-ignoring receiver of a sender.
+  But that's a separate named algorithm, not an overload of <code>connect</code>. It's still possible to indirectly call <code>schedule</code> on an executor,
+  but that's <code>schedule(make_error_ignoring_scheduler(foo))</code>,
+  not <code>schedule(foo)</code>.
+</p>
+</body>
+</html>
