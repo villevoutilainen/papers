@@ -292,7 +292,7 @@ Audience: LEWG, SG1
     template&lt;class R&gt;
       requires receiver_of&lt;R&gt;
     auto connect(R&& r) && {
-      return as-operation((E&&) ex_, (R&&) r);
+      return as-operation&lt;E, remove_cvref_t&lt;R&gt;&gt;{(E&&)ex_, (R&&) r};
     }
     template&lt;class R&gt;
       requires receiver_of&lt;R&gt;
@@ -302,7 +302,7 @@ Audience: LEWG, SG1
   };
 </pre></ins>
 
-<p><ins>where as-operation is an implementation-defined class equivalent to</p>
+<p><ins>where as-operation is an implementation-defined class template equivalent to</p>
 <ins><pre>
     template &lt;class E, class R&gt;
     struct as-operation {
@@ -315,7 +315,7 @@ Audience: LEWG, SG1
     }
   };
 </pre></ins>
-<p><ins>and as-invocable is a class template equivalent to the following:</p></ins>
+<p><ins>and as-invocable is an implementation-defined class template equivalent to the following:</p></ins>
 
 <ins><pre>  template&lt;class R, class&gt;
   struct as-invocable {
