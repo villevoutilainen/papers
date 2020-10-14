@@ -229,23 +229,19 @@ Audience: LEWG, SG1
   the third bullet:
 <p>
 
-<pre>  
+<p>
   For some subexpressions e and f, let E be decltype((e)) and let F be decltype((f)). The expression execution::execute(e, f) is ill-formed if F does not model invocable, or if E does not model<del> either</del> executor <del>or sender</del>. Otherwise, it is expression-equivalent to:
 </p>
-
-<ul>
+<pre><ul>
     <li>e.execute(f), if that expression is valid. If the function selected does not execute the function object f on the executor e, the program is ill-formed with no diagnostic required.</li>
-
     <li>Otherwise, execute(e, f), if that expression is valid, with overload resolution performed in a context that includes the declaration
 
       void execute();
 
-    and that does not include a declaration of execution::execute. If the function selected by overload resolution does not execute the function object f on the executor e, the program is ill-formed with no diagnostic required.</li>
-
+and that does not include a declaration of execution::execute. If the function selected by overload resolution does not execute the function object f on the executor e, the program is ill-formed with no diagnostic required.</li>
     <li><del>Otherwise, execution::submit(e, as-receiver&lt;remove_cvref_t&lt;F&gt;, E&gt;{forward&lt;F&gt;(f)}) if</del>
       <ul>
         <li><del>F is not an instance of as-invocable&lt;R,E'&gt; for some type R where E and E' name the same type ignoring cv and reference qualifiers, and</del></li>
-
         <li><del>invocable&lt;remove_cvref_t&lt;F&gt;&amp;&gt; &amp;&amp; sender_to&lt;E, as-receiver&lt;remove_cvref_t&lt;F&gt;, E&gt;&gt; is true</del></li></ul>
 
     <del>where as-receiver is some implementation-defined class template equivalent to:</del>
