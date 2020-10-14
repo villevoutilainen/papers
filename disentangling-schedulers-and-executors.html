@@ -106,8 +106,7 @@ Audience: LEWG, SG1
   <li><code>execute()</code> is a customization point that operates on an executor only.</li>
   <li>All senders&amp;receivers-related operations, like <code>connect()</code>,
     operate on senders&amp;receivers only.</li>
-  <li>There is a conversion function that takes anything
-    that works with <code>execution::execute()</code> (including executors), and converts it
+  <li>There is a conversion function that takes an executor, and converts it
     to a scheduler. The working name for this function
     is <code>make_scheduler_from_executor()</code>, because that's what it does.</li>
   <li>Separate algorithms, most likely and preferrably with names other
