@@ -340,5 +340,28 @@ Audience: LEWG, SG1
 </p>
 </blockquote>
 
+
+<h2>What This Buys</h2>
+
+<p>
+  Broadly stated, this change preserves the use cases that matter to executor
+  users, and removes a footgun that is lying about in P0443.  Users of
+  excutors want to be able to execute simple-to-write invocables
+  via <code>execute()</code>.  They will typically do not want to use the
+  schedule() API at all.  This change preserves the former, and removes the
+  dangerous adaptation to the latter.  Specifically:
+</p>
+
+<p>
+  The user can no longer pass an executor to <code>schedule()</code>
+  or <code>connect()</code>, and have the code be well-formed, but with broken
+  runtime semantics.  Such code is extremely likely to be a mistake.
+</p>
+
+<p>
+  The use of <code>execute()</code> remains convenient, with the same
+  semantics as P0443.
+</p>
+
 </body>
 </html>
