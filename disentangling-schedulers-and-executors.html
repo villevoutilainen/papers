@@ -44,10 +44,12 @@ Audience: LEWG, SG1
 
 <p>
   This proposal proposes to simplify the design of schedulers and executors,
-  providing a single conversion facility from an executor to a scheduler,
+  providing a single conversion facility from an <code>executor</code> to
+  a <code>scheduler</code>,
   removing the non-scheduler/sender/receiver facilities from
-  schedule and connect, and keeping the ability to execute on either
-  a scheduler or an executor.
+  <code>schedule</code> and <code>connect</code>.
+  This proposal *also* removes the ability to
+  <code>execute</code> on a sender.
 </p>
 
 <h3>Why?</h3>
@@ -70,28 +72,47 @@ Audience: LEWG, SG1
 </p>
 <p>
   Once we accept that an executor shouldn't just be treated as a scheduler,
-  we also realize that there's no point in providing support for plain
-  invocable function objects for connecting them to senders directly.
+  we also realize that there's no point in providing support for treating
+  + a sender-of-void as an executor in the execution::execute() CPO.
   Such an operation is every bit as lossy as treating an executor as
   a scheduler. It should be likewise explicit, and there's no reason
   to provide it in the fundamental building blocks; a separate algorithm
   can be provided that connects a plain invocable to a sender.
 </p>
-
+<p>
+  In a slightly different vein, a scheduler or a sender should not be treated
+  as an executor either. That's not like a lossy conversion, but it's
+  like invoking a function with a wide contract, and then having it be
+  overridden by a function with a narrow contract, and thus the caller
+  expectations of a wide contract aren't met. The semantics of execute()
+  are intentionally rather free-form. There is no generic protocol that
+  executors conform to, but senders and receivers do have such a protocol,
+  and schedulers *will* conform to it, causing naive users of execute
+  on senders to shoot themselves in the foot. Furthermore, that protocol
+  will intercept attempts to implement custom protocols solely in the operator()
+  of the user-provided runnable; the handling of scheduling errors
+  will happen in schedulers before that runnable is invoked,
+  thwarting the attempts to implement something custom and breaking
+  expectations for a custom protocol.
+</p>
+<p>
+  These apples and oranges don't mix. In either direction. Cross-pollination
+  attempts should be explicit, visible, greppable, and done with utmost care.
+</p>
 <h3>How?</h3>
 
 <ol>
   <li><code>schedule()</code> operates on schedulers only.</li>
-  <li><code>execute()</code> is a customization point that can operate on a scheduler
-    or an executor. This is fine, since execute() is a fire-and-forget
-    one-way call, and thus it's acceptable that it doesn't support
-    the senders&amp;receivers protocol.</li>
+  <li><code>execute()</code> is a customization point that operates on an executor only.</li>
   <li>All senders&amp;receivers-related operations, like <code>connect()</code>,
     operate on senders&amp;receivers only.</li>
   <li>There is a conversion function that takes anything
-    that has a <code>.execute()</code> (including executors), and converts it
+    that works with <code>execution::execute()</code> (including executors), and converts it
     to a scheduler. The working name for this function
-    is <code>make_scheduler_from_executor()</code>, because that's what it does.
+    is <code>make_scheduler_from_executor()</code>, because that's what it does.</li>
+  <li>Separate algorithms, most likely and preferrably with names other
+    than 'execute', can be provided in e.g. <a href="https://wg21.link/p1897">P1897</a> to allow straightforward fire-and-forget on schedulers
+    or senders.
 </ol>
 
 <h2>Rumination</h2>
@@ -101,7 +122,8 @@ Audience: LEWG, SG1
 <p>
   The current design allows execute() on anything, schedule() on anything,
   connect() on anything. But that makes no sense; execute() is okay
-  as a one-way fire-and-forget mechanism, but schedule() on an executor
+  as a one-way fire-and-forget mechanism when no particular error-handling
+  semantics are expected, but schedule() on an executor
   tosses in the wind the <code>set_error/set_done</code> parts. Those
   parts are absolutely necessary for some senders&amp;receivers use
   cases to work. Padding them in with operations that e.g.
@@ -109,6 +131,16 @@ Audience: LEWG, SG1
   it becomes impossible to reason about generic code, and to trust
   that senders are actual senders, receivers are actual receivers,
   and that the senders&amp;receivers protocol actually works.
+  As far as execute() goes, the story is similar. What we have
+  right now will terminate() a program if there is a scheduling
+  error. This becomes ever more likely when programs and applications
+  using these facilities grow more complex; simple schedulers&amp;senders&amp;receivers combine into more complicated ones, increasing the chance
+  that scheduling errors will not be just allocation failures, but
+  something much more likely, such as i/o errors. Thus, simply executing
+  on a sender that has terminate() called from its receivers' set_done/set_error
+  is a massive footgun. It's also a massive footgun if we make executing
+  on a sender actually work properly with the sender&amp;receiver protocol,
+  since transitioning to the executor world will again drop that protocol.
 </p>
 
 <p>
@@ -116,7 +148,12 @@ Audience: LEWG, SG1
   from executors (which don't conform to any protocol) to senders&amp;receivers,
   there is exactly one conversion operation that crosses that bridge
   (or rather jumps over the river when there is no bridge)
-  Otherwise, the separate worlds are kept separate.
+  Otherwise, the separate worlds are kept separate. Similarly,
+  the jump from senders&amp;receivers to executors doesn't introduce
+  surprises when an execute function would do drastically different
+  things depending on what it's invoked on. This avoids a vector&lt;bool&gt;
+  problem that we currently have in the design of P0443. Any jumps
+  back and forth between the worlds don't introduce surprises either.
 </p>
 <p>
   Once in a senders&amp;receivers world, all operations related to them
@@ -125,6 +162,13 @@ Audience: LEWG, SG1
   including <code>schedule</code> and <code>connect</code> and wonder
   whether they're operating on a scheduler and a sender or perhaps
   an executor and an invocable.
+</p>
+<p>
+  Simlilarily, once in an executor world, the operations related to an executor
+  work as expected. In order to have a protocol, or to deal with
+  executor-specific means of handling scheduling errors, that needs to be
+  programmed explicitly, instead of having a sender introduce a protocol
+  where it's perhaps not expected or even desired.
 </p>
 <p>
   It's still perfectly plausible to provide a function that queues
@@ -156,6 +200,12 @@ Audience: LEWG, SG1
   them on <code>executors</code> well-formed.
 </p>
 <p>
+  And, again, code that uses executors will probably do so with the expectation
+  that there is a particular custom protocol in play, or no protocol at all.
+  Implicitly introducing the senders&amp;receivers protocol into code that has
+  the aforementioned expectation(s) can be a massively breaking change.
+</p>
+<p>
   We need a clear, simple, and understandable story of what our concepts
   are and what they do. That means we shouldn't encourage every programmer
   to deal with a <code>scheduler_or_executor</code> concept that's basically
@@ -167,12 +217,54 @@ Audience: LEWG, SG1
   those types can be used by audiences who have no use for the
   senders-and-receivers protocol. But as long as those audiences don't
   have a use for the senders-and-receivers protocol, we make the conversion
-  from an executor to a scheduler _deliberately_ ugly.
+  from an executor to a scheduler _deliberately_ ugly. And as long as those
+  audiences don't have a use for the senders-and-receivers protocol, we
+  don't inflict it on those audiences implicitly, either.
 </p>
 
 <h2>Changes to P0443</h2>
 
 <p>
+  In 2.2.3.4 execution::execute, modify the second paragraph and remove
+  the third bullet:
+<p>
+
+<pre>  
+  For some subexpressions e and f, let E be decltype((e)) and let F be decltype((f)). The expression execution::execute(e, f) is ill-formed if F does not model invocable, or if E does not model<del> either</del> executor <del>or sender</del>. Otherwise, it is expression-equivalent to:
+</p>
+
+<ul>
+    <li>e.execute(f), if that expression is valid. If the function selected does not execute the function object f on the executor e, the program is ill-formed with no diagnostic required.</li>
+
+    <li>Otherwise, execute(e, f), if that expression is valid, with overload resolution performed in a context that includes the declaration
+
+      void execute();
+
+    and that does not include a declaration of execution::execute. If the function selected by overload resolution does not execute the function object f on the executor e, the program is ill-formed with no diagnostic required.</li>
+
+    <li><del>Otherwise, execution::submit(e, as-receiver&lt;remove_cvref_t&lt;F&gt;, E&gt;{forward&lt;F&gt;(f)}) if</del>
+      <ul>
+        <li><del>F is not an instance of as-invocable&lt;R,E'&gt; for some type R where E and E' name the same type ignoring cv and reference qualifiers, and</del></li>
+
+        <li><del>invocable&lt;remove_cvref_t&lt;F&gt;&amp;&gt; &amp;&amp; sender_to&lt;E, as-receiver&lt;remove_cvref_t&lt;F&gt;, E&gt;&gt; is true</del></li></ul>
+
+    <del>where as-receiver is some implementation-defined class template equivalent to:</del>
+
+        <del>template&lt;class F, class&gT;</del>
+        <del>struct as-receiver {</del>
+          <del>F f_;</del>
+          <del>void set_value() noexcept(is_nothrow_invocable_v&lt;F&amp;&gt;) {</del>
+            <del>invoke(f_);</del>
+          <del>}</del>
+          <del>template&lt;class E&gt;</del>
+          <del>[[noreturn]] void set_error(E&&) noexcept {</del>
+            <del>terminate();</del>
+          <del>}</del>
+          <del>void set_done() noexcept {}</del>
+        <del>};</del>
+	</li>
+	</ul>
+</pre>
   In 2.2.3.5 execution::connect, remove the third bullet:
 </p>
 
@@ -344,23 +436,14 @@ Audience: LEWG, SG1
 <h2>What This Buys</h2>
 
 <p>
-  Broadly stated, this change preserves the use cases that matter to executor
-  users, and removes a footgun that is lying about in P0443.  Users of
-  excutors want to be able to execute simple-to-write invocables
-  via <code>execute()</code>.  They will typically do not want to use the
-  schedule() API at all.  This change preserves the former, and removes the
-  dangerous adaptation to the latter.  Specifically:
-</p>
-
-<p>
   The user can no longer pass an executor to <code>schedule()</code>
   or <code>connect()</code>, and have the code be well-formed, but with broken
   runtime semantics.  Such code is extremely likely to be a mistake.
 </p>
-
 <p>
-  The use of <code>execute()</code> remains convenient, with the same
-  semantics as P0443.
+  The user can no longer pass a sender to <code>execute()</code>,
+  and have the code be well-formed, but with broken
+  runtime semantics.  Such code is extremely likely to be a mistake.
 </p>
 
 </body>
