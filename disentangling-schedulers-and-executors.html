@@ -255,6 +255,8 @@ Audience: LEWG, SG1
   <ins>2.x execution::make_scheduler_from_executor
   </ins>
   </p>
+  <p><ins>The behavior of a program that adds specializations for <code>make_scheduler_from_executor</code> is undefined.</ins>
+  </p>
   <p><ins><code>template &lt;class E&gt; scheduler auto make_scheduler_from_executor(E&amp;&amp; executor);</code></ins></p>
   <p><ins>Constraints: executor.execute() is a well-formed expression.</ins></p>
   <p><ins>Returns:</ins></p>
