@@ -84,7 +84,7 @@ Audience: LEWG, SG1
   <li>There is a conversion function that takes anything
     that has a <code>.execute()</code> (including executors), and converts it
     to a scheduler. The working name for this function
-    is <code>make_error_ignoring_scheduler()</code>, because that's what it does.
+    is <code>make_scheduler_from_executor()</code>, because that's what it does.
 </ol>
 
 <h2>Rumination</h2>
@@ -123,8 +123,44 @@ Audience: LEWG, SG1
   It's still perfectly plausible to provide a function that queues
   a plain invocable to run as an error-ignoring receiver of a sender.
   But that's a separate named algorithm, not an overload of <code>connect</code>. It's still possible to indirectly call <code>schedule</code> on an executor,
-  but that's <code>schedule(make_error_ignoring_scheduler(foo))</code>,
+  but that's <code>schedule(make_scheduler_from_executor(foo))</code>,
   not <code>schedule(foo)</code>.
+</p>
+
+<h3>The cross-concept bridging the current design attempts is not
+  useful for programmers</h3>
+
+<p>
+  We are going to see a fair amount of generic algorithms that
+  operate on senders. These algorithms will provide decorators
+  that change (sometimes extend, sometimes transform) what
+  senders, receivers, and operation_states do. They will be lego-like
+  building blocks that introduce a particular form of aspect-oriented
+  programming into the world of senders and receivers.
+</p>
+<p>
+  Programmers, even library programmers, are expected to be mostly using
+  such algorithms, rather than using things like <code>connect()</code>
+  directly. These algorithms will be constrained to accept
+  <code>schedulers, </code><code>senders</code>
+  and <code>receivers</code>. They will not be constrained to accept
+  both <code>schedulers</code> and <code>executors</code> even if the
+  cross-concept bridging that's currently in P0443 might make using
+  them on <code>executors</code> well-formed.
+</p>
+<p>
+  We need a clear, simple, and understandable story of what our concepts
+  are and what they do. That means we shouldn't encourage every programmer
+  to deal with a <code>scheduler_or_executor</code> concept that's basically
+  a disjunction of the two concepts. Executors aren't schedulers, so let's
+  not pretend that they are. For those who insist on treating an executor
+  as a scheduler, we provide them with a very explicit conversion function.
+  Executors are a perfectly reasonable family of types in and of themselves,
+  types that provide a less strict protocol than schedulers do; that's fine,
+  those types can be used by audiences who have no use for the
+  senders-and-receivers protocol. But as long as those audiences don't
+  have a use for the senders-and-receivers protocol, we make the conversion
+  from an executor to a scheduler _deliberately_ ugly.
 </p>
 
 <h2>Changes to P0443</h2>
@@ -210,6 +246,88 @@ Audience: LEWG, SG1
 </pre></li></del>
 <li>Otherwise, execution::schedule(s) is ill-formed.</li>
 </ul>
+
+<p>
+  After 2.2.3, add a new section:
+
+<blockquote>
+  <p>
+  <ins>2.x execution::make_scheduler_from_executor
+  </ins>
+  </p>
+  <p><ins><code>template &lt;class E&gt; scheduler auto make_scheduler_from_executor(E&amp;&amp; executor);</code></ins></p>
+  <p><ins>Constraints: executor.execute() is a well-formed expression.</ins></p>
+  <p><ins>Returns:</ins></p>
+  <p>
+    <ins>a <code>scheduler</code>, so that calling <code>execution::schedule(s)</code> on that
+      <code>scheculer <code>s returned from <code>make_scheduler_from_executor</code>
+	is expression-equivalent to</code></ins>
+  </p>
+  <p>
+    <ins>as-sender&lt;remove_cvref_t&lt;S&gt;&gt;{executor}, where as-sender is an implementation-defined class template equivalent to</ins></p>
+
+<ins><pre>  template&lt;class E&gt;
+  struct as-sender {
+  private:
+    E ex_;
+  public:
+    template&lt;template&lt;class...&gt; class Tuple, template&lt;class...&gt; class Variant&gt;
+      using value_types = Variant&lt;Tuple&lt;&gt;&gt;;
+    template&lt;template&lt;class...&gt; class Variant&gt;
+      using error_types = Variant&lt;std::exception_ptr&gt;;
+    static constexpr bool sends_done = true;
+
+    explicit as-sender(E e) noexcept
+      : ex_((E&&) e) {}
+    template&lt;class R&gt;
+      requires receiver_of&lt;R&gt;
+    connect_result_t&lt;E, R&gt; connect(R&& r) && {
+      return as-operation((E&&) ex_, (R&&) r);
+    }
+    template&lt;class R&gt;
+      requires receiver_of&lt;R&gt;
+    connect_result_t&lt;const E &, R&gt; connect(R&& r) const & {
+      return as-operation(ex_, (R&&) r);
+    }
+  };
+</pre></ins>
+
+<p><ins>where as-operation is an implementation-defined class equivalent to</p>
+<ins><pre>
+  struct as-operation {
+    remove_cvref_t&lt;S&gt; e_;
+    remove_cvref_t&lt;R&gt; r_;
+    void start() noexcept try {
+      execution::execute(std::move(e_), as-invocable&lt;remove_cvref_t&lt;R&gt;, S&gt;{r_});
+    } catch(...) {
+      execution::set_error(std::move(r_), current_exception());
+    }
+  };
+</pre></ins>
+<p><ins>and as-invocable is a class template equivalent to the following:</p></ins>
+
+<ins><pre>  template&lt;class R, class&gt;
+  struct as-invocable {
+    R* r_;
+    explicit as-invocable(R& r) noexcept
+      : r_(std::addressof(r)) {}
+    as-invocable(as-invocable && other) noexcept
+      : r_(std::exchange(other.r_, nullptr)) {}
+    ~as-invocable() {
+      if(r_)
+        execution::set_done(std::move(*r_));
+    }
+    void operator()() & noexcept try {
+      execution::set_value(std::move(*r_));
+      r_ = nullptr;
+    } catch(...) {
+      execution::set_error(std::move(*r_), current_exception());
+      r_ = nullptr;
+    }
+  };</pre></ins>
+
+</p>
+</blockquote>
 
 </body>
 </html>
