@@ -33,6 +33,13 @@ Audience: LEWG, SG1
 <hr/>
 <h1 align=center>Disentangling schedulers and executors</h1>
 
+<h2>Credits</h2>
+
+<p>
+  Many many thanks to Tomasz Kami&#x0144;ski for a very high-quality
+  technical review of this paper.
+</p>
+
 <h2>Abstract</h2>
 
 <p>
@@ -259,6 +266,7 @@ Audience: LEWG, SG1
   </p>
   <p><ins><code>template &lt;class E&gt; scheduler auto make_scheduler_from_executor(E&amp;&amp; executor);</code></ins></p>
   <p><ins>Constraints: remove_cvref_t&lt;E&gt; satisfies execution::executor.</ins></p>
+  <p><ins>Preconditions: remove_cvref_t&lt;E&gt; models execution::executor.</ins></p>
   <p><ins>Returns:</ins></p>
   <p>
     <ins>a <code>scheduler</code>, so that calling <code>execution::schedule(s)</code> on that
@@ -283,10 +291,11 @@ Audience: LEWG, SG1
       : ex_((E&&) e) {}
     template&lt;class R&gt;
       requires receiver_of&lt;R&gt;
-    connect_result_t&lt;E, R&gt; connect(R&& r) && {
+    auto connect(R&& r) && {
       return as-operation((E&&) ex_, (R&&) r);
     }
     template&lt;class R&gt;
+      requires receiver_of&lt;R&gt;
     auto connect(R&& r) const & {
       return as-operation&lt;E, remove_cvref_t&lt;R&gt;&gt;{ex_, (R&&) r};
     }
