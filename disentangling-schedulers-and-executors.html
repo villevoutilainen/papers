@@ -74,7 +74,7 @@ On behalf of SFS (Finland)<br/>
 <p>
   Once we accept that an executor shouldn't just be treated as a scheduler,
   we also realize that there's no point in providing support for treating
-  + a sender-of-void as an executor in the execution::execute() CPO.
+  a sender-of-void as an executor in the execution::execute() CPO.
   Such an operation is every bit as lossy as treating an executor as
   a scheduler. It should be likewise explicit, and there's no reason
   to provide it in the fundamental building blocks; a separate algorithm
@@ -164,7 +164,7 @@ On behalf of SFS (Finland)<br/>
   an executor and an invocable.
 </p>
 <p>
-  Simlilarily, once in an executor world, the operations related to an executor
+  Similarily, once in an executor world, the operations related to an executor
   work as expected. In order to have a protocol, or to deal with
   executor-specific means of handling scheduling errors, that needs to be
   programmed explicitly, instead of having a sender introduce a protocol
@@ -250,7 +250,8 @@ On behalf of SFS (Finland)<br/>
   Yes, we do. Schedulers, senders, and receivers establish a scalable
   protocol that can deal with errors between task submission and
   callback of the invokable, and provide proper cleanup. However,
-  if you need something beyond that protocol, you need an executor.
+  if you need something completely different from that protocol,
+  an executor may be a better fit.
   And to be able to write multiple different executors, they should still
   have a common API.
 </p>
