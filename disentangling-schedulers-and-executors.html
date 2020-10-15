@@ -238,7 +238,7 @@ Audience: LEWG, SG1
   and apply an error-handling algorithm on top of it, which would otherwise
   intercept the set_error calls and do what that algorithm defines.
   But a hypothetical make_executor_from_sender wouldn't know that, so it would
-  need to intercept set_error, and those intercepts would cause termination
+  need to intercept set_error again, on top, and those intercepts would cause termination
   even if an algorithm that would make those intercepts unnecessary
   has already been applied.
 </p>
