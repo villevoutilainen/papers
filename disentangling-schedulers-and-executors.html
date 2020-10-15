@@ -231,7 +231,7 @@ Audience: LEWG, SG1
 <h3>What about bridging to the other direction? Why is there no make_executor_from_sender proposed here?</h3>
 
 <p>
-  Such a facility is frought with peril. A sender will report scheduling errors.
+  Such a facility is fraught with peril. A sender will report scheduling errors.
   For an executor, those errors have nowhere to go. Thus they would
   be unhandled errors, and would need to be intercepted and most likely
   call terminate(). What makes it worse is that you can take a sender,
