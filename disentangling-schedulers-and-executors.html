@@ -243,6 +243,17 @@ Audience: LEWG, SG1
   has already been applied.
 </p>
 
+<h3>All that considered, do we still need both concepts, executor and scheduler?</h3>
+
+<p>
+  Yes, we do. Schedulers, senders, and receivers establish a scalable
+  protocol that can deal with errors between task submission and
+  callback of the invokable, and provide proper cleanup. However,
+  if you need something beyond that protocol, you need an executor.
+  And to be able to write multiple different executors, they should still
+  have a common API.
+</p>
+
 <h2>Changes to P0443</h2>
 
 <p>
