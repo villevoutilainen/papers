@@ -22,13 +22,13 @@
 <body>
 
 <address align=right>
-Document number: D????
+Document number: D2235R0
 <br/>
 Audience: LEWG, SG1
 <br/>
 <br/>
 <a href="mailto:ville.voutilainen@gmail.com">Ville Voutilainen</a><br/>
-2020-10-11<br/>
+2020-10-15<br/>
 </address>
 <hr/>
 <h1 align=center>Disentangling schedulers and executors</h1>
@@ -219,6 +219,28 @@ Audience: LEWG, SG1
   from an executor to a scheduler _deliberately_ ugly. And as long as those
   audiences don't have a use for the senders-and-receivers protocol, we
   don't inflict it on those audiences implicitly, either.
+</p>
+
+<h3>All that considered, is make_scheduler_from_executor fundamental for P0443?</h3>
+
+<p>
+  That would be no. We could just as well do something like it separately in P1897. It's proposed here to provide a better overall view of the cross-concept
+  picture, but doesn't strictly need to be in P0443.
+</p>
+
+<h3>What about bridging to the other direction? Why is there no make_executor_from_sender proposed here?</h3>
+
+<p>
+  Such a facility is frought with peril. A sender will report scheduling errors.
+  For an executor, those errors have nowhere to go. Thus they would
+  be unhandled errors, and would need to be intercepted and most likely
+  call terminate(). What makes it worse is that you can take a sender,
+  and apply an error-handling algorithm on top of it, which would otherwise
+  intercept the set_error calls and do what that algorithm defines.
+  But a hypothetical make_executor_from_sender wouldn't know that, so it would
+  need to intercept set_error, and those intercepts would cause termination
+  even if an algorithm that would make those intercepts unnecessary
+  has already been applied.
 </p>
 
 <h2>Changes to P0443</h2>
