@@ -1,0 +1,56 @@
+digraph test123 {
+  design_review[shape=box, label="EWG/LEWG design review" style=filled fillcolor=lawngreen];
+
+  wording_exists[label="Wording exists?", shape=diamond style=filled fillcolor=lawngreen];
+  produce_wording[shape=box, label="Produce wording" style=filled fillcolor=lawngreen];
+  pre_review_specification[shape=box, label="Pre-review specification" style=filled fillcolor=lawngreen];
+
+  technical_design_review[shape=box, label="EWG/LEWG specification review" style=filled fillcolor=lawngreen];
+  specification_implements_design[shape=diamond, label="Specification implements design?" style=filled fillcolor=lawngreen];
+
+design_ready_for_decision[shape=box, label="Design decision, park for further design feedback" style=filled fillcolor=mediumseagreen];
+  design_decision_issues_found[label="Design issues found?", shape=diamond style=filled fillcolor=mediumseagreen];
+  design_tentatively_ready[shape=box, label="Tentatively CWG / Tentatively LWG" style=filled fillcolor=mediumseagreen];
+
+  tr_issues_found[label="Design issues found?", shape=diamond style=filled fillcolor=mediumseagreen];
+  
+  technical_detail_review[shape=box, label="CWG/LWG specification review" style=filled fillcolor=sandybrown];
+  
+  issues_found[label="Design issues found?", shape=diamond style=filled fillcolor=sandybrown];
+  continue_specification_review[shape=box, label="Continue specification review" style=filled fillcolor=sandybrown];
+  review_implementation_deployment_experience[shape=box, label="Review the available implementation/deployment experience,\ndone by both the Design and the Specification group" style=filled fillcolor=sandybrown];
+  specification_tentatively_ready[shape=box, label="Tentatively Plenary, park for a final feedback round" style=filled fillcolor=tan3];
+  
+  plenary_tr_issues_found[label="Design issues found?", shape=diamond style=filled fillcolor=tan3];
+  plenary_tr_specification_issues_found[label="Specification issues found?", shape=diamond style=filled fillcolor=tan3];
+  specification_ready[shape=box, label="Ready for Plenary" style=filled fillcolor=tan3];
+
+design_review -> wording_exists
+  wording_exists -> produce_wording[label="No"];
+  produce_wording -> pre_review_specification;
+  pre_review_specification -> technical_design_review;
+  wording_exists -> technical_design_review[label="Yes"];
+  technical_design_review -> specification_implements_design;
+  specification_implements_design -> design_ready_for_decision[label="Yes"];
+  design_ready_for_decision -> design_decision_issues_found;
+  design_decision_issues_found -> design_review[label="Yes"];
+  design_decision_issues_found -> design_tentatively_ready[label="No"];
+
+specification_implements_design -> technical_detail_review[label="Yes, urgent"];
+  design_tentatively_ready -> tr_issues_found;
+  tr_issues_found -> design_review[label="Yes"];
+  tr_issues_found -> technical_detail_review[label="No"];
+  specification_implements_design -> design_review[label="No"];
+  technical_detail_review -> issues_found;
+  issues_found -> design_review[label="Yes"];
+  issues_found -> continue_specification_review[label="No"];
+  continue_specification_review -> review_implementation_deployment_experience;
+  review_implementation_deployment_experience -> specification_tentatively_ready;
+  review_implementation_deployment_experience -> specification_ready[label="Urgent"];
+  specification_tentatively_ready -> plenary_tr_issues_found;
+  specification_tentatively_ready -> plenary_tr_specification_issues_found;
+  plenary_tr_issues_found -> design_review[label="Yes"];
+  plenary_tr_issues_found -> specification_ready[label="No"];
+  plenary_tr_specification_issues_found -> technical_detail_review[label="Yes"];
+  plenary_tr_specification_issues_found -> specification_ready[label="No"];
+}
