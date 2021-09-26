@@ -1,0 +1,401 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+	<title>Ruminations on networking and executors</title>
+
+	<style>
+	p {text-align:justify}
+	li {text-align:justify}
+	blockquote.note
+	{
+		background-color:#E0E0E0;
+		padding-left: 15px;
+		padding-right: 15px;
+		padding-top: 1px;
+		padding-bottom: 1px;
+	}
+	ins {color:#00A000}
+	del {color:#A00000}
+	</style>
+</head>
+<body>
+
+<address align=right>
+Document number: D????
+<br/>
+Audience: WG21, LEWG
+<br/>
+<br/>
+<a href="mailto:ville.voutilainen@gmail.com">Ville Voutilainen</a><br/>
+On behalf of SFS (Finland)<br/>
+2021-09-25<br/>
+</address>
+<hr/>
+<h1 align=center>Ruminations on networking and executors</h1>
+
+<h2>Credits</h2>
+
+<p>
+  Many thanks to Chris Kohlhoff and Niall Douglas for answering
+  my questions about ASIO, the Networking TS, and its work-executing
+  model. Huge thanks to Eric Niebler for answering my thousands
+  of questions about Senders and Receivers with stoic patience.
+</p>
+
+<h2>Abstract</h2>
+
+<p>
+  This paper makes the plain observation that we should not standardize
+  the Networking TS as it's currently designed. The problem is the use
+  of a P0443 executor. This paper makes the strong recommendation
+  that we shouldn't, in fact, standardize pretty much anything that
+  employs a P0443 executor as a significant component of the design, if it
+  can even be described as a component.
+</p>
+<p>
+  A P0443 executor is not an executor. It's a work-submitter. It doesn't
+  provide any means of finding out whether the work submitted succeeded,
+  or whether
+  an error occurred. Such error handling is fundamental and crucial.
+  Leaving it out from a facility that abstracts the execution of work
+  simply doesn't work as a building block for libraries, larger systems,
+  and applications for an audience as wide as the audience of a C++
+  standard. The only thing that knows whether the work succeeded
+  is the same facility that accepted the work submission, and trying
+  to entertain the fantasy that the work submission and result observation
+  are separable concepts is just <em>wrong</em>.
+</p>
+<p>
+  It certainly gave me no pleasure to write this paper. The original
+  plan about a week earlier than the actual writing of this paper
+  was to write a paper that makes a case for standardizing
+  the Networking TS in C++23, and how that's fine even if we eventually
+  end up with multiple models for executing asynchronous work. The subsequent
+  homework and analysis, however, lead to something completely different.
+  I had high hopes that the Networking TS doesn't actually suffer from
+  the problems of P0443 executors, but that is not the case.
+</p>
+
+<h2>Change history</h2>
+
+<ul>
+  <li>R0: Initial version.</li>
+</ul>
+
+<h2>Contents</h2>
+
+<ul> 
+<li><a href="##HighLevelProblem"/>The Problem, at a high level</li> 
+<li><a href="##ElaboratedProblem"/>The Problem, elaborated</li>
+<li><a href="##CounterArguments"/>Counter-arguments</li>
+<li><a href="##ProblemRephrased"/>The Problem, Rephrased</li>
+<li><a href="##Salvage"/>Can we salvage some parts of the Networking TS for C++23?</li>
+<li><a href="##Conclusion"/>Conclusion, i.e. "so what should we do?"</li>
+</ul>
+
+<a name="#HighLevelProblem"/><h2>The Problem, at a high level</h2>
+
+<p>The work-execution APIs in the Networking TS do not provide
+any attempt of means to provide building blocks for error handling
+(or cancellation). Integrating and interoperating them with
+facilities that do would require everybody everywhere to come up
+  with custom solutions for it. Or to rely on various other libraries
+  that do, which is an open-ended and theoretically infinite set
+  of libraries, failing to establish common vocabulary.</p>
+
+<p>In other words, the work execution APIs in the Networking TS are incomplete,
+  insufficient, and infeasible for standardization. They do not fit
+  into a bigger picture. The problem keeps boiling down to the use
+of a P0443 executor.</p>
+
+<a name="#ElaboratedProblem"/><h2>The Problem, elaborated</h2>
+
+<a name="#WorkCanFail"/><h3>Work submitted for execution can fail after submission</h3>
+
+<p>
+  The problem is plain and simple: asynchronous work can fail. Especially
+  i/o work. Errors occurring when performing i/o are not surprising, and
+  in quite many domains and contexts, such errors are not even considered
+  exceptional. Connections time out, servers are unable to respond, servers
+  are unable to produce the expected results. 
+</p>
+
+<a name=="#AbstractionScales"/><h3>A work-execution abstraction scales</h3>
+
+<p>The problem becomes even worse when we consider what a work-executor
+  abstraction can do at what scale; the abstraction is pervasive, cross-cutting,
+  and scales both down low and high up. At the low level, i/o submitted
+  to e.g. io_uring can fail. At the high level, your asynchronous work
+  request to download and parse an XML document can fail in multiple ways.
+  Your asynchronous work request to log on to your social media account
+  and write a post can fail in multiple ways, and the examples of that should
+  be tantamount to self-explanatory.
+</p>
+
+<p>
+  For a work-executing abstraction, the submission of the work and observation
+  of the results are joined to the hip, married for life, and inseparable.
+  You can't handle the errors in downloading and parsing an XML document
+  with a result observer that knows how to handle io_uring errors,
+  and you can't handle the errors in a low-level io_uring work execution
+  with a result observer that knows how to handle errors in downloading
+  and parsing an XML document.
+</p>
+
+<p>
+  One could ask whether it's reasonable to use the same work execution
+  abstraction at such different levels of abstraction. But that question
+  is actually beside the point; even if you take io_uring and something
+  else that operates at roughly the same abstraction level, you still can't
+  mix and match the work submission and result observation. They are
+  not two separable pieces of the puzzle; they're two pieces at the code
+  level, sure, but conceptually separable they are not.
+</p>
+
+<a name="#ExecutorDoesNotScale"/><h3>A P0443 executor fails to scale</h3>
+
+<p>However, a P0443 executor creates this separation out of thin air, by providing
+  an abstraction for submitting work, but none for observing the results.
+  It's an incorrect abstraction that fails to actually abstract the
+  underlying facility, resulting in loss of information. What adds insult
+  to injury is that everything we can fathom wrapping into this abstraction
+  has the knowledge of asynchronous failures, as well as the knowledge
+  of how fatal that failure was. A P0443 executor artificially, after
+  the fact, throws this information into the wind.</p>
+
+<p>Such an abstraction is useless. We can't honestly tell programmers
+  that we give them an API where work submission is abstracted, and then
+  just give them a lofty but vague guideline that they should figure out how
+  to observe the results in an unspecified way (that's presumably
+  specific to the context under which the work is performed), and oh,
+  by the way, that unspecified way absolutely positively has to be
+  the right one for that specific context, because you can't mix and match.
+  We create a situation where it's almost perfectly reasonable to operate
+  on an abstract work-executor, by not caring what it actually is when
+  submitting work to it, but then instantly requiring that its specific
+  type is well-known for observing the results in a specific way.
+</p>
+
+<p>This might well be a suffient approach for current users of ASIO.
+  But it certainly seems like a severe limitation on how the code
+  using it can be written, and which parts of it know what specific
+  types and which ones don't. That sort of limitations are not feasible
+  for a general work-execution abstraction inflicted on all C++ programmers.
+  An incomplete half of an API accompanied by a vague guideline is not a
+  building block. The standard should provide building blocks. It should
+  provide building blocks for a variety of audiences, for a variety
+  of use cases. For a work-execution abstraction, it should provide a building
+  block that can be reused for different work-execution models. Thus
+  it shouldn't fail to provide building blocks for getting the error information that
+  is intimately coupled with the work submission, but yet temporally and
+  thread-of-execution-wise decoupled from it.
+</p>
+
+<a name="#CounterArguments"/><h2>Counter-arguments</h2>
+
+<a name="#LowLevelBuildingBlock"/><h3>"Right, but the executor is not necessarily asynchronous at all,
+  it's a lower-level building block"</h3>
+
+<p>The argument has been made that the problems depicted are about
+  asynchronous execution, and that the P0443 executor operates at a level
+  so low that it doesn't take a stance on whether the work is asynchronous
+  or not.</p>
+<p>I don't find this argument very palatable. A P0443 executor certainly
+  can launch either asynchronous or synchronous work, but for an API that
+  can launch both, either blocking or not, the only way to provide a uniform
+  access to results is to have the results be accessed like they are
+  in the asynchronous cases. In other words, with a separate channel
+  that indicates the results. In other words, a callback. Exceptions or result codes
+  could be emitted from the submission operation for synchronous
+  or asynchronous-but-to-the-client-synchronous scenarios, but for
+  anything that spawns the work onto a different thread of execution and lets
+  the client's thread of execution merrily stroll along,
+  that obviously doesn't work.</p>
+<p>In other words, I don't find it a palatable answer that we are so afraid
+  of committing to a possibly asynchronous API that we don't specify
+  any API at all. That flexibility is an overreach, because now we
+  fail to provide any building block out of a desire to be overly-flexible.</p>
+
+<a name="#OneWayTwoWay"/><h3>"You don't understand what the purpose of a P0443 executor is; it's a
+  one-way execution mechanism and you can always build a two-way channel
+  on top of that."</h3>
+
+<p>
+  Well, first of all, no I can't. If I'm operating with an abstraction,
+  chances are that I want to operate with an abstraction. I do not wish
+  to know the specifics, which I'd need to know in order to couple
+  the right result observation approach to the right work submission
+  approach. If I need to compose the work submission and result observation,
+  it's quite interesting that I don't need to know the specifics when
+  submitting work, but I do need to know the specifics when I want
+  to observe the results and compose these artificially separated
+  matters back together, when they were already together in the
+  concrete facility that the abstraction fails to abstract.
+</p>
+<p>Second, sure I can. I can, all ASIO users can, all C++ users can.
+  ASIO users can write asynchronous agents that package all this together,
+  and let the clients of their APIs talk to the asynchronous agent
+  instead of talking to the executor directly. The problem is that they will
+  do so in ten thousand different ways. Many of them will fail to realize
+  how to do it correctly, and will fail to handle errors. There are no building
+  blocks provided for these asynchronous agents. Except there are. In P2300.
+</p>
+
+<a name="#ApiFlavors"/><h3>"Specifying the value and error channels overconstrains the API
+  and makes it difficult to express different API flavors, use cases,
+  and scenarios"</h3>
+
+<p>Does it? With Senders and Receivers, I can
+  <ul>
+    <li>use workers that throw exceptions</li>
+    <li>use workers that don't throw exceptions, but report result codes instead</li>
+    <li>use workers in such a manner that it looks as if all the errors arose out
+      of the initial work submission, without needing to use separate callbacks or other observers</li>
+  </ul>
+</p>
+
+<p>That last bit is something that I could vaguely imagine being
+  a reason for not specifying this, to allow an <code>execute()</code>
+  to sometimes just toss error information out of it directly, without
+  ever requiring the user to set up any separate observers, just in
+  case our work is actually not asynchronous or it is asynchronous
+  but blocks the calling thread of execution and then just spits out the
+  result.</p>
+<p>I can do that with the <code>sync_wait()</code> algorithm. Or a different
+  composition of algorithms that is able to cope with work that never
+  talks back to the client using a separate thread of execution. The point
+  is that just because we would specify a general approach for how to
+  handle errors and observe results, that doesn't mean that we lose
+  flexibility in how those errors and results can be consumed by
+  clients.</p>
+
+<a name="#ComplicatesSimple"/><h3>"This complicates writing simple threadpools; they never fail
+  to run the task after scheduling succeeds"</h3>
+
+<p>
+  Yes, that's correct. How many different threeadpools like that does
+  the world need? How difficult is it really to write? Just don't invoke
+  the error channel, that's a mere omission. Otherwise fit your threadpool
+  into the generic model.
+</p>
+
+<a name="#ProblemRephrased"/><h2>The Problem, Rephrased</h2>
+
+<p>Let's step a mile back and look at the big picture.</p>
+
+<a name="#DifferenceOfModels"/><h3>The difference of the models</h3>
+<p>Here's the real crux of the matter. The Networking TS provides
+  a work-execution abstraction that doesn't provide means or companion
+  means for handling errors and other results. Those means need to
+  be provided via custom solutions, always.</p>
+
+<p>Our alternative approach, which is Senders and Receivers, provides those
+  means from the get-go, at every abstraction level.</p>
+
+<a name="#GearedForDifferentThings"/><h3>Sure, they're geared for different things...</h3>
+
+<p>Senders and Receivers are actually designed to provide a generic
+  framework for asynchrony in C++. The Networking TS doesn't try to do that.
+  Fine. But the problem is that the work-submission abstraction in
+  the Networking TS doesn't fit into a larger framework. It can be made
+  to fit, but that fitting is always left as an exercise for the programmer.
+  "Never expose an executor as your API, wrap it into an asynchronous agent."
+  "You can provide this API as a part of your API for thread pools, message
+  pumps, etc., but don't do that, always write an asynchronous agent
+  that gives your clients a complete API and completely wraps those different
+  thread pools and message pumps etc."
+</p>
+<p>The problem is that those quotations are completely fabricated, and
+  we don't say that anywhere nor do we even indicate this in any way
+  anywhere. Except in the heads of experts. Whereas in our alternative
+  approach the error handling and result observation is a fundamental
+  part of the building blocks in the model. It's specified, required,
+  and explained in the semantic requirements of the concepts.</p>
+
+<a name="#HypotheticalButGrave"/><h3>The hypothetical but grave concern</h3>
+
+<p>Right, now then, "so what if the low-level executor concept doesn't
+  play well in this grand scheme of generic asynchrony in C++, we can
+  tell users not to use it for that, and explain what they need to do
+  instead."</p>
+<p>
+  This is a difference between an API that requires a book to explain
+  how to use it and two books to explain how not to use it, and an
+  API that explains those things in its concepts and their requirements.
+  To put it bluntly, the first is not an API, it's a guideline. The second
+  is an actual API.
+</p>
+
+<p>If we give programmers a suggestion that there's an API that abstracts
+  thread pools and message pumps, they will write their thread pools and
+  message pumps using that API. And then they'll realize that that's not
+  enough, and they need to add a shebang of various things to facilitate
+  error handling. And now we have a proliferation of different custom
+  solutions that don't integrate together, and can't be written generic
+  code for, or even non-templatey abstract code that would just work the same way
+  even if you swap out the underlying worker.
+</p>
+<p>We can't afford that proliferation. If we want to solve the problem
+  of general and generic asynchrony in C++, for the masses, we need to
+  have a framework where different concrete implementations of our concepts
+  interoperate. A P0443 executor plays no role in that world, because
+  it's woefully insufficient for that. It just plain shouldn't be used
+  as a worker abstraction, at any level.
+
+<a name="#Salvage"/><h2>Can we salvage some parts of the Networking TS for C++23?</h2>
+
+<p>
+  What an interesting question. Let's look at two strawfigure approaches.
+</p>
+<a name="#JustSockets"/><h3>Rip out all asynchronicity and other task execution, and standardize
+just the socket abstraction with a synchronous API</h3>
+
+<p>
+This would at least provide very bare-bones networking. It's unknown
+to me whether the socket abstraction in the Networking TS caters for
+the possibility of creating a custom socket. During its reviews,
+this was pointed out as a hole in it, but perhaps that was because
+the io_contexts etc. did not allow plugging in a custom socket. If
+io_contexts are gone, is what's left flexible enought to allow custom
+sockets to be provided?
+</p>
+
+<a name="#SupportErrorChannels"/><h3>Try to change the design of the Networking TS so that it supports error channels</h3>
+
+<p>Two questions come to mind:
+<ol><li>If we go for a separate error channel, aren't we just going to reinvent
+Senders and Receivers?</li>
+<li>If we try to keep supporting simple lambdas and turn the nullary
+callbacks into unary callbacks, aren't we going to require a sum type
+that can hold either a value or an error?</li>
+</ol>
+</p>
+<p>I shall make the following observation on the second alternative:
+such a sum type has a space cost and a branch cost to figure out which
+one it is. The source of the execution result already paid a branch
+cost. This additional branch cost is overhead. So is the space cost,
+because the source of the result already knew which one it is, packaged
+it into a sum type, and now the client needs to unpack that, tossing the
+other part away (save for cases where they are both meaningful, but
+that's not all cases).
+</p>
+<p>
+This is C++ we are talking about. No overhead allowed if we can avoid it.
+Not a cycle. Not a byte.
+</p>
+
+<a name="#Conclusion"/><h2>Conclusion, i.e. "so what should we do?"</h2>
+
+<p>
+Here's a rather straightforward suggestion:
+<ol>
+  <li>Stop spending energy on standardizing the Networking TS for C++23.</li>
+  <li>Focus on making progress with Senders and Receivers.
+</ol>
+</p>
+<p>Let's be bold. Let's make a decision. Various analyses lead into this
+outcome.</p>
+
+</body>
+</html>
