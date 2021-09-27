@@ -346,7 +346,7 @@ of a P0443 executor.</p>
 <a name="#Salvage"/><h2>Can we salvage some parts of the Networking TS for C++23?</h2>
 
 <p>
-  What an interesting question. Let's look at two strawfigure approaches.
+  What an interesting question. Let's look at three strawfigure approaches.
 </p>
 <a name="#JustSockets"/><h3>Rip out all asynchronicity and other task execution, and standardize
 just the socket abstraction with a synchronous API</h3>
@@ -383,6 +383,22 @@ that's not all cases).
 <p>
 This is C++ we are talking about. No overhead allowed if we can avoid it.
 Not a cycle. Not a byte.
+</p>
+
+<a name="#TryToFixExecutor"/><h3>Change the executor concept to require a callback that takes an error_code</h3>
+
+<p>
+  We could also entertain modifying the P0443 executor concept or replace
+  its uses with something that can actually report errors, by adding
+  a mandatory error_code parameter to the callbacks invoked by an asynchronous
+  operation.
+</p>
+<p>
+  I continue to wonder whether that would just end up reinventing Senders
+  and Receivers. If I have an asynchronous operation that wants to
+  provide more detailed error information than just a simple error code,
+  I need an open API for it and I soon end up wanting an overload set.
+  Which is what I have in set_error() in Senders and Receivers.
 </p>
 
 <a name="#Conclusion"/><h2>Conclusion, i.e. "so what should we do?"</h2>
