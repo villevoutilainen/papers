@@ -265,7 +265,7 @@ On behalf of SFS (Finland)<br/>
   and low-level errors to high-level results are generic, and the
   same across layers
   of different abstraction level. The algorithms that transfer the
-  results to run as continuation on other runners and other event loops
+  results to run as continuations on other runners and other event loops
   are generic, and the same across layers of different abstraction level.
   There are adapters that facilitate specific translations, but the algorithms
   are the same.
@@ -277,6 +277,53 @@ On behalf of SFS (Finland)<br/>
   to fetch the error information, and turning the payload data
   into something that's composable. The whole concept is completely
   useless, there's no composed code you can write with it.</p>
+
+<h2>On the "need" of executor "guarantees" in the Networking TS</h2>
+
+<p>
+  It has been said that Networking TS needs a guarantee that once
+  an execution context for a continuation has been established,
+  that context is used for all invocations of the continuation,
+  whether an error or a success. Two problems:
+  <ol>
+    <li>I don't see how the networking library needs this guarantee. Whether a single context is to be used for all invocations of a continuation seems
+      domain-specific and application-specific to me, and nailing it down
+      at the "framework" level seems like a hard-coded choice.</li>
+    <li>A P0443 executor does NOT establish this guarantee. It can decide not to invoke the continuation at all. It can decide to invoke it from different contexts based on what the result of the operation was. It has no such semantics of guaranteeing how the continuation is invoked, all it establishes is an interface for submitting work. Which is not sufficient for establishing semantics for
+      how the work is executed.</li>
+  </ol>
+</p>
+<p>
+  With Senders and Receivers, one can apply an algorithm on the chain/nested-pile of work executed to ensure this. And that algorithm can be applied
+  on the higher abstraction layers that know what the actual user needs.
+</p>
+
+<h3>Rephrasing the problem, a summary</h3>
+
+<p>Composing P0443 executors is an ad-hoc exercise. It's actually
+  worse than that, because P0443 executors don't compose, you need
+  to compose something more refined and more specific. Composing
+  Networking TS completion handlers seems like an ad-hoc and non-generic
+  exercise. Whether they were designed or ever deployed in larger-scale
+  compositions that scale from low-level to high-level with any sort
+  of uniformity, I don't know. Such a uniform model could perhaps
+  be built on the completion handlers, but it can't be built on
+  executors, and the problem with that is that everybody will build
+  their own incompatible composition model.</p>
+
+<p>Senders and Receivers were designed to facilitate the generic
+  and scalable composition from the get-go. It's their driving
+  design goal, to separate the work from how it's executed, to
+  translate the results separate from what the work is, to queue
+  both the work and its continuations to different contexts, all concern-separated
+  from the work itself and its continuations, with a uniform model
+  that allows generic algorithms to do the heavy lifting but yet
+  be generic across different abstraction levels and layers. The design
+  recognizes that there are arbitrarily many concrete implementations
+  of a scheduler and a sender, but yet provides common facilities
+  as algorithms that work with all of those concrete implementations,
+  in a composable manner.</p>
+
 
 <a name="#Conclusion"/><h2>Conclusion, i.e. "so what should we do?"</h2>
 
