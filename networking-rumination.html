@@ -303,7 +303,10 @@ On behalf of SFS (Finland)<br/>
 <p>Composing P0443 executors is an ad-hoc exercise. It's actually
   worse than that, because P0443 executors don't compose, you need
   to compose something more refined and more specific. Composing
-  Networking TS completion handlers seems like an ad-hoc and non-generic
+  Networking TS completion handlers or asynchronous operations
+  (which aren't even a thing in the NetTS APIs, so how would I be
+  able to compose those other than in an ad-hoc manner?)
+seems like an ad-hoc and non-generic
   exercise. Whether they were designed for or ever deployed in larger-scale
   compositions that scale from low-level to high-level with any sort
   of uniformity, I don't know. Such a uniform model could perhaps
@@ -323,6 +326,31 @@ On behalf of SFS (Finland)<br/>
   of a scheduler and a sender, but yet provides common facilities
   as algorithms that work with all of those concrete implementations,
   in a composable manner.</p>
+
+<h2>On the question of standardising existing practice</h2>
+
+<p>"This is not a problem, ASIO has been shipping this for years,
+and you can find a similar executor in java.util.concurrent."</p>
+
+<p>
+Right. The first one doesn't seem to provide a composition model at all,
+so maybe these questions haven't come up. Maybe ASIO hasn't been
+used with an executor that can fail to run the continuation, like
+a deadline scheduler that might not be able to lazily acquire the
+resources needed for running the continuation. Maybe ASIO hasn't
+been used in an environment where such failures are an issue.
+</p>
+<p>
+For the java executors, they always have an escape hatch of performing
+a dynamic cast down to a specific executor that can tell you whether
+it can report such errors to you. I don't know whether anyone does that,
+or whether such executors just haven't been used.
+</p>
+<p>
+Such existing practice has a huge problem that it just plain can't
+handle errors that occur after submission. That's an irrecoverable
+data loss, and we know how to do better, because we have other
+existing practice where this is a solved problem, in libunifex.</p>
 
 
 <a name="#Conclusion"/><h2>Conclusion, i.e. "so what should we do?"</h2>
