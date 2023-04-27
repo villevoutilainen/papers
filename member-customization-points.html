@@ -1,0 +1,251 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+	<title>Member customization points for Senders and Receivers</title>
+
+	<style>
+	p {text-align:justify}
+	li {text-align:justify}
+	blockquote.note
+	{
+		background-color:#E0E0E0;
+		padding-left: 15px;
+		padding-right: 15px;
+		padding-top: 1px;
+		padding-bottom: 1px;
+	}
+	ins {color:#00A000}
+	del {color:#A00000}
+	</style>
+</head>
+<body>
+
+<address align=right>
+Document number: D????
+<br/>
+Audience: LEWG
+<br/>
+<br/>
+<a href="mailto:ville.voutilainen@gmail.com">Ville Voutilainen</a><br/>
+2023-04-27<br/>
+</address>
+<hr/>
+<h1 align=center>Member customization points for Senders and Receivers</h1>
+
+<h2>Abstract</h2>
+
+<p>
+  There have been various suggestions that Senders and Receivers need a new
+  language feature for customization points, to avoid the complexity
+  of ADL tag_invoke.</p>
+
+<p>This paper makes the case that C++ already has such a language
+  facility, and it works just fine for the purposes of Senders and Receivers.
+</p>
+
+<p>That language facility is member functions.</p>
+
+<p>In a nutshell, the approach in this paper is relatively straightforward;
+  for all non-query customization points, ADL tag_invoke overloads become
+  member functions that take a customization-point-specific tag as an argument
+  to tell them apart from possible other member functions from other libraries.
+  Query customization points become tag_query member functions that take
+  the query tag as an argument.</p>
+
+<p>This is because non-queries don't need to forward calls to customization
+  points, but it's useful for queries to be able to forward queries.</p>
+
+<p>In order to be able to write perfect-forwarding function templates
+  that work both for lvalues and rvalues, we use deduced this.</p>
+
+</body>
+
+<h2>Quick examples</h2>
+
+<p>
+  A tag_invoke customization point for start 
+  <pre><blockquote><code>friend void tag_invoke(std::execution::start_t, recv_op&amp; self) noexcept</code></blockquote></pre>
+</p>
+<p>
+  becomes
+</p>
+<p>
+  <pre><blockquote><code>void start(this recv_op&amp; self, std::execution::start_t) noexcept</code></blockquote></pre>
+</p>
+<p>
+  A perfect-forwarding connect
+<pre><blockquote></code>template &lt;__decays_to&lt;__t&gt; _Self, receiver _Receiver&gt;
+    requires sender_to&lt;__copy_cvref_t&lt;_Self, _Sender&gt;, __receiver&lt;_Receiver&gt;&gt;
+friend auto tag_invoke(std::execution::connect_t, _Self&amp;&amp; __self, _Receiver __rcvr)
+</code></blockquote></pre>
+</p>
+<p>
+  becomes
+</p>
+<p>
+<pre><blockquote></code>template &lt;__decays_to&lt;__t&gt; _Self, receiver _Receiver&gt;
+    requires sender_to&lt;__copy_cvref_t&lt;_Self, _Sender&gt;, __receiver&lt;_Receiver&gt;&gt;
+auto connect(this _Self&amp;&amp; __self, std::execution::connect_t, _Receiver __rcvr)
+</code></blockquote></pre>
+</p>
+<p>
+The call
+<pre><blockquote></code>tag_invoke(std::execution::connect, (Snd&amp;&amp;) s, r);
+</code></blockquote></pre>
+</p>
+<p>
+  becomes
+</p>
+<p>
+  <pre><blockquote></code>((Snd&amp;&amp;)s).connect(std::execution::connect, r);
+</code></blockquote></pre>
+</p>
+<p>A query
+  <pre><blockquote><code>friend in_place_stop_token tag_invoke(std::execution::get_stop_token_t, const __t&amp; __self) noexcept
+</code></blockquote></pre>
+</p>
+<p>
+  becomes
+</p>
+<p>
+  <pre><blockquote><code>in_place_stop_token tag_query(this const __t&amp; __self, std::execution::get_stop_token_t) noexcept
+</code></blockquote></pre>
+</p>
+
+<h2>What does this buy us?</h2>
+
+<p>
+  First of all, two things, both rather major:
+  <ol>
+    <li>NO ADL.</li>
+    <li>..and that makes defining customization points *much* simpler.</li>
+  </ol>
+</p>
+
+<p>
+  A bit of elaboration on the second point: consider that earlier query
+  of get_stop_token in tag_invoke form. It's an example of that query
+  for the when_all algorithm. But what needs to be done is that
+  both that query (which is a hidden friend) and the when_all_t
+  function object type are in a detail-namespace,
+  and then outside that namespace, in namespace std::execution, the
+  type is brought into scope with a using-declaration, and the actual
+  function object is defined.
+</p>
+<p>
+  This has the effect of keeping the overload set small, when each
+  and every type and its customizations are meticulously defined
+  that way. Build times are decent, the sizes of overload sets are nicely
+  controlled and are small, diagnostics for incorrect calls are hopefully
+  fairly okay.
+</p>
+<p>
+  But that's not all there is to it. Generic code that uses such things
+  should wrap its template parameters into utilities that prevent ADL
+  via template parameters. You might see something like this gem:
+  <pre><blockquote><code>// For hiding a template type parameter from ADL
+template &lt;class _Ty&gt;
+struct _X {
+  using __t = struct _T {
+    using __t = _Ty;
+  };
+};
+template &lt;class _Ty&gt;
+using __x = __t&lt;_X&lt;_Ty&gt;&gt;;
+</code></blockquote></pre>
+</p>
+<p>
+  and then use it like this:
+  <pre><blockquote><code>using make_stream_env_t = stream_env&lt;stdexec::__x&lt;BaseEnv&gt;&gt;;
+  </code></blockquote></pre>
+</p>
+<p>With member customization points, you don't need any such acrobatics.
+  The customization points are members. You define a customization point
+  as a member function, and you can just put your type directly into
+  whichever namespace you want (some might even use the global namespace),
+  and you don't need to use nested detail namespaces. Then you
+  call <code>foo.connect(std::execution::connect, receiver);</code> and you
+  don't have to do the no-ADL wrapping in your template parameters either.
+</p>
+<p>The definition of customization points is much simpler, to a ridiculous
+  extent. Using them is simpler; it's a member call, everybody knows
+  what that does, and many people know what scopes that looks in, and
+  a decent amount of people appreciate the many scopes it *doesn't* look in.</p>
+<p>Composition and reuse and wrapping of customization points becomes much
+  easier, because it's just.. ..good old OOP, if you want to look at it that
+  way. We're not introducing a new language facility for which you need
+  to figure out how to express various function compositions and such,
+  the techniques and patters are decades old, and work here as they always
+  worked.</p>
+
+<h2>What are its downsides compared to a new language facility?</h2>
+
+<p>Well, we don't do anything for users who for some reason _have_ to
+  use ADL customization points. But the reason for going for this approach
+  is that we decouple Senders and Receivers from an unknown quantity,
+  and avoid many or even most of the problems of using ADL customization points.
+</p>
+<p>Other than that, I'm not sure such downsides exist.</p>
+
+<p>A common concern with using wrappers is that they don't work
+  if you have existing APIs that use the wrappees - introducing wrappers
+  into such situations just doesn't work, because they simply aren't
+  the same type, and can't be made the same type. And a further
+  problem is having to deal with both the wrappers and wrappees
+  as concrete types, and figuring out when to use which, and possibly
+  having to duplicate code to deal with both.
+</p>
+<p>
+  The saving grace with Senders and Receivers is that they are wrapped
+  everywhere all the time. Algorithms wrap senders, the wrapped senders
+  wrap their receivers, and resulting operation states. This wrapping
+  nests pretty much infinitely.
+</p>
+<p>For cases where you need to use a concrete sender, it's probably
+  type-erased, rather than being a use of a concrete target sender.
+</p>
+
+<h2>Implementation experience</h2>
+
+<p>
+  A partial work-in-progress implementation exists as a branch of
+  the reference implementation of P2300, at
+  <a href="https://github.com/villevoutilainen/wg21_p2300_std_execution/tree/member-only-customization-points">https://github.com/villevoutilainen/wg21_p2300_std_execution/tree/member-only-customization-points</a>
+</p>
+<p>
+  The implementation macro-migrates from ADL tag_invoke overloads to
+  static member functions and member functions using deduced this.
+  This is done to provide existing users a migration path.</p>
+</p>
+
+<h2>Would non-static member functions be okay in this model?</h2>
+
+<p>
+  They certainly can be. We don't have implementation experience on
+  macro-migrating existing users to those, but that might be possible
+  to do too. Using deduced this is only really necessary for connect()
+  functions that need to do both rvalue and lvalue connect in the same
+  template overload. The ADL overloads of tag_invoke just accomplish
+  this with a forwarding reference parameter, but with the member function
+  approach, we need deduced this because that's the LHS of connect,
+  and needs to be perfectly-forwarded.
+</p>
+<p>
+  Non-static member functions, deduced this functions, and static member
+  functions can certainly be called the same way, with <code>x.foo()</code>,
+  and there is a call syntax that works for both static member functions
+  and deduced this functions, i.e. <code>(&X:foo)(x)</code>.
+</p>
+
+<h2>Wording</h2>
+
+<p>
+  There is no specification change yet that would show what P2300 looks
+  like with this approach applied. The expectation is that that change
+  is actually fairly straightforward. The code changes certainly are,
+  although the macro-wrappings make it less readable than the end result
+  is.
+</p>
+
+</body>
+</html>
