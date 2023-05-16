@@ -56,7 +56,10 @@ Audience: LEWG
   points, but it's useful for queries to be able to forward queries.</p>
 
 <p>In order to be able to write perfect-forwarding function templates
-  that work both for lvalues and rvalues, we use deduced this.</p>
+  that work both for lvalues and rvalues, we use deduced this. When
+  there is no need to write a single function for both lvalues and rvalues,
+  a traditional non-static member function will do.
+</p>
 
 </body>
 
@@ -70,7 +73,7 @@ Audience: LEWG
   becomes
 </p>
 <p>
-  <pre><blockquote><code>void start(this recv_op&amp; self, std::execution::start_t) noexcept</code></blockquote></pre>
+  <pre><blockquote><code>void start(std::execution::start_t) noexcept</code></blockquote></pre>
 </p>
 <p>
   A perfect-forwarding connect
@@ -90,14 +93,14 @@ auto connect(this _Self&amp;&amp; __self, std::execution::connect_t, _Receiver _
 </p>
 <p>
 The call
-<pre><blockquote></code>tag_invoke(std::execution::connect, (Snd&amp;&amp;) s, r);
+<pre><blockquote></code>tag_invoke(std::execution::connect, std::forward&lt;Snd&gt;(s), r);
 </code></blockquote></pre>
 </p>
 <p>
   becomes
 </p>
 <p>
-  <pre><blockquote></code>((Snd&amp;&amp;)s).connect(std::execution::connect, r);
+  <pre><blockquote></code>std::forward&lt;Snd&gt;(s).connect(std::execution::connect, r);
 </code></blockquote></pre>
 </p>
 <p>A query
@@ -108,7 +111,7 @@ The call
   becomes
 </p>
 <p>
-  <pre><blockquote><code>in_place_stop_token tag_query(this const __t&amp; __self, std::execution::get_stop_token_t) noexcept
+  <pre><blockquote><code>in_place_stop_token tag_query(std::execution::get_stop_token_t) const noexcept
 </code></blockquote></pre>
 </p>
 
@@ -131,6 +134,29 @@ The call
   and then outside that namespace, in namespace std::execution, the
   type is brought into scope with a using-declaration, and the actual
   function object is defined.
+</p>
+<p>Roughly like this:
+  <pre><blockquote><code>namespace you_will_have_trouble_coming_up_with_a_name_for_it {
+  template &lt;class Snd, class Recv, class Fn&gt;
+  struct my_then_operation {
+    opstate op;
+    struct t {
+      friend void tag_invoke(start_t, t& self) noexcept {
+        start(self.op_);
+      }
+    };
+  };
+  // ADL-protected internal senders and receivers omitted
+  struct my_then_t {
+    template &lt;sender Snd, class Fn&gt; // proper constraints omitted
+    sender auto operator(Snd&& sndr, Fn&& fn) {
+      // the actual implementation omitted
+    }
+  };
+}
+using you_will_have_trouble_coming_up_with_a_name_for_it::my_then_t;
+constexpr my_then_t my_then{};
+</code></pre></blockquote>
 </p>
 <p>
   This has the effect of keeping the overload set small, when each
@@ -218,23 +244,34 @@ using __x = __t&lt;_X&lt;_Ty&gt;&gt;;
   This is done to provide existing users a migration path.</p>
 </p>
 
-<h2>Would non-static member functions be okay in this model?</h2>
+<h2>Some additional considerations</h2>
+
+<h3>Access</h3>
 
 <p>
-  They certainly can be. We don't have implementation experience on
-  macro-migrating existing users to those, but that might be possible
-  to do too. Using deduced this is only really necessary for connect()
-  functions that need to do both rvalue and lvalue connect in the same
-  template overload. The ADL overloads of tag_invoke just accomplish
-  this with a forwarding reference parameter, but with the member function
-  approach, we need deduced this because that's the LHS of connect,
-  and needs to be perfectly-forwarded.
+  It's possible to make customization point members private, and have
+  them usable by the framework, by befriending the entry point (e.g.
+  std::execution::connect, in a member connect(std::execution::connect_t)).
+  It's perhaps ostensibly rare to need to do that, considering that
+  it's somewhat unlikely that a sender wrapper or an operation state
+  wrapper that provides the customization point would have oodles
+  of other functionality. Nevertheless, we have made that possible in the
+  prototype implementation, so we could do the same in the standard.
+  This seems like an improvement over the ADL customization points.
+  With them, anyone can do the ADL call, the access of a hidden friend
+  doesn't matter.
 </p>
+
+<h3>Interface pollution</h3>
+
 <p>
-  Non-static member functions, deduced this functions, and static member
-  functions can certainly be called the same way, with <code>x.foo()</code>,
-  and there is a call syntax that works for both static member functions
-  and deduced this functions, i.e. <code>(&X:foo)(x)</code>.
+  It's sometimes plausible that a class with a member customization
+  point inherits another class that provides the same customization point,
+  and it's not an override of a virtual function. In such situations,
+  the traditional technique works, bring in the base customization
+  point via a using-declaration, which silences possible hiding warnings
+  and also create an overload set. The expectation is that the situation
+  and the technique are sufficiently well-known, since it's old-skool.
 </p>
 
 <h2>Wording</h2>
