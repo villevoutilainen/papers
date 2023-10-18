@@ -193,6 +193,59 @@ slap() and you for whatever reason remove it.</p>
   prospect to have a problem like that sneak past any of those testing rounds.
 </p>
 
+<h3>Changing the type of a function parameter</h3>
+
+<p>Next, we have a class that has an innocent free()
+  function, and we call it in a function that takes
+  a reference to our class type:
+<p>
+  <pre><blockquote><code>
+struct Kraken {
+    void free();
+};</code></blockquote></pre>
+</p>
+<p>
+  <pre><blockquote><code>
+void release(Kraken&amp; k) {
+    k.free(); 
+}</code></blockquote></pre>
+</p>
+
+<p>We then change the processing function to take the parameter by
+  pointer:</p>
+
+<p>
+  <pre><blockquote><code>
+void release(Kraken* k) {
+    if (k)
+        k.free(); 
+}</code></blockquote></pre>
+</p>
+
+<p>
+  We forgot to change the call from <code>k.free()</code> to
+<code>k->free()</code>. The language won't point out this little
+problem, and will be looking for a non-member free() function to call instead.
+</p>
+
+<p>A variant of this theme is changing</p>
+
+<p>
+  <pre><blockquote><code>
+void cleanup(X&amp; x) {
+    x.close(); 
+}</code></blockquote></pre>
+</p>
+to
+<p>
+  <pre><blockquote><code>
+void cleanup(int x) {
+    x.close(); 
+}</code></blockquote></pre>
+</p>
+<p>These last two examples end up deallocating memory and closing a file
+  handle, and it's unlikely that was the intent of the code.</p>
+  
 <h3>Making a member inaccessible, or deleting a member</h3>
 
 <p>
