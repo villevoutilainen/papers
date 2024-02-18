@@ -27,7 +27,7 @@ Audience: LEWG
 <br/>
 <br/>
 <a href="mailto:ville.voutilainen@gmail.com">Ville Voutilainen</a><br/>
-2024-02-16<br/>
+2024-02-19<br/>
 </address>
 <hr/>
 <h1 align=center>Member customization points for Senders and Receivers</h1>
@@ -317,6 +317,12 @@ using __x = __t&lt;_X&lt;_Ty&gt;&gt;;
   or by writing member functions, if the thing customized is not really
   a customization but rather an opt-in.
 </p>
+<p>But note, though, that once the adoption of this paper's approach
+  is done, we don't <em>have</em> to
+  qualify <em>anything</em> in this specification, because all
+  calls to namespace-scope functions are as-if qualified, and the
+  rest is member calls.
+</p>
 <p>
   Additionally, it might be tempting to remove the function objects
   set_value, set_error and set_stopped completely, but there are
@@ -330,7 +336,208 @@ using __x = __t&lt;_X&lt;_Ty&gt;&gt;;
 </p>
 
 <p>
-  In [functional.syn], strike <em>tag-invoke</em>, tag_invocable, nothrow_tag_invocable, tag_invoke_result, and tag_invoke.</p>
+  In [functional.syn], strike <em>tag-invoke</em>, tag_invocable, nothrow_tag_invocable, tag_invoke_result, and tag_invoke:
+  <blockquote><pre><del>// [func.tag_invoke], tag_invoke
+namespace tag-invoke { // exposition only
+  void tag_invoke();
+
+  template&lt;class Tag, class... Args&gt;
+    concept tag_invocable =
+      requires (Tag&& tag, Args&&... args) {
+        tag_invoke(std::forward&lt;Tag&gt;(tag), std::forward&lt;Args&gt;(args)...);
+      };
+
+  template&lt;class Tag, class... Args&gt;
+    concept nothrow_tag_invocable =
+      tag_invocable&lt;Tag, Args...&gt; &&
+      requires (Tag&& tag, Args&&... args) {
+        { tag_invoke(std::forward&lt;Tag&gt;(tag), std::forward&lt;Args&gt;(args)...) } noexcept;
+      };
+
+  template&lt;class Tag, class... Args&gt;
+    using tag_invoke_result_t =
+      decltype(tag_invoke(declval&lt;Tag&gt;(), declval&lt;Args&gt;()...));
+
+  template&lt;class Tag, class... Args&gt;
+    struct tag_invoke_result&lt;Tag, Args...&gt; {
+      using type =
+        tag_invoke_result_t&lt;Tag, Args...&gt;; // present if and only if tag_invocable&lt;Tag, Args...&gt; is true
+    };
+
+  struct tag; // exposition only
+}
+inline constexpr tag-invoke::tag tag_invoke {};
+using tag-invoke::tag_invocable;
+using tag-invoke::nothrow_tag_invocable;
+using tag-invoke::tag_invoke_result_t;
+using tag-invoke::tag_invoke_result;</del>
+
+template&lt;auto& Tag&gt;
+  using tag_t = decay_t&lt;decltype(Tag)&gt;;      
+</pre></blockquote>
+</p>
+
+<p> Remove [func.tag_invoke]</p>
+
+<p> In [exec.syn], remove ADL-protecting nested namespaces:
+  <blockquote><pre><del>namespace queries { // exposition only</del>
+    struct forwarding_query_t;
+    struct get_allocator_t;
+    struct get_stop_token_t;
+  <del>}
+  using queries::forwarding_query_t;
+  using queries::get_allocator_t;
+  using queries::get_stop_token_t;</del>
+  
+<del>namespace exec-envs { // exposition only</del>
+    struct empty_env {};
+    struct get_env_t;
+  <del>}
+  using envs-envs::empty_env;
+  using envs-envs::get_env_t;</del>
+
+namespace std::execution {
+  // [exec.queries], queries
+  enum class forward_progress_guarantee;  
+  <del>namespace queries { // exposition only</del>
+    struct get_scheduler_t;
+    struct get_delegatee_scheduler_t;
+    struct get_forward_progress_guarantee_t;
+    template<class CPO>
+      struct get_completion_scheduler_t;
+  <del>}
+  using queries::get_scheduler_t;
+  using queries::get_delegatee_scheduler_t;
+  using queries::get_forward_progress_guarantee_t;
+  using queries::get_completion_scheduler_t;</del>
+
+  <del>namespace receivers { // exposition only</del>
+    struct set_value_t;
+    struct set_error_t;
+    struct set_stopped_t;
+  <del>}
+  using receivers::set_value_t;
+  using receivers::set_error_t;
+  using receivers::set_stopped_t;</del>
+
+  <del>namespace op-state { // exposition only</del>
+    struct start_t;
+  <del>}
+  using op-state::start_t;</del>
+
+  <del>namespace completion-signatures { // exposition only</del>
+    struct get_completion_signatures_t;
+  <del>}
+  using completion-signatures::get_completion_signatures_t;</del>
+
+  <del>namespace senders-connect { // exposition only</del>
+    struct connect_t;
+  <del>}
+  using senders-connect::connect_t;</del>
+
+  <del>namespace senders-factories { // exposition only</del>
+    struct schedule_t;
+    struct transfer_just_t;
+  <del>}</del>
+
+  inline constexpr unspecified just{};
+  inline constexpr unspecified just_error{};
+  inline constexpr unspecified just_stopped{};
+  <del>using senders-factories::schedule_t;
+  using senders-factories::transfer_just_t;</del>
+
+  <del>namespace sender-adaptor-closure { // exposition only</del>
+    template<class-type D>
+      struct sender_adaptor_closure { };
+  <del>}
+  using sender-adaptor-closure::sender_adaptor_closure;</del>
+
+  <del>namespace sender-adaptors { // exposition only</del>
+    struct on_t;
+    struct transfer_t;
+    struct schedule_from_t;
+    struct then_t;
+    struct upon_error_t;
+    struct upon_stopped_t;
+    struct let_value_t;
+    struct let_error_t;
+    struct let_stopped_t;
+    struct bulk_t;
+    struct split_t;
+    struct when_all_t;
+    struct when_all_with_variant_t;
+    struct transfer_when_all_t;
+    struct transfer_when_all_with_variant_t;
+    struct into_variant_t;
+    struct stopped_as_optional_t;
+    struct stopped_as_error_t;
+    struct ensure_started_t;
+  <del>}
+  using sender-adaptors::on_t;
+  using sender-adaptors::transfer_t;
+  using sender-adaptors::schedule_from_t;
+  using sender-adaptors::then_t;
+  using sender-adaptors::upon_error_t;
+  using sender-adaptors::upon_stopped_t;
+  using sender-adaptors::let_value_t;
+  using sender-adaptors::let_error_t;
+  using sender-adaptors::let_stopped_t;
+  using sender-adaptors::bulk_t;
+  using sender-adaptors::split_t;
+  using sender-adaptors::when_all_t;
+  using sender-adaptors::when_all_with_variant_t;
+  using sender-adaptors::transfer_when_all_t;
+  using sender-adaptors::transfer_when_all_with_variant_t;
+  using sender-adaptors::into_variant_t;
+  using sender-adaptors::stopped_as_optional_t;
+  using sender-adaptors::stopped_as_error_t;
+  using sender-adaptors::ensure_started_t;</del>
+
+  <del>namespace sender-consumers { // exposition only</del>
+    struct start_detached_t;
+  <del>}
+  using sender-consumers::start_detached_t;</del>
+
+
+namespace std::this_thread {
+  // [exec.queries], queries
+  <del>namespace queries { // exposition only</del>
+    struct execute_may_block_caller_t;
+  <del>}
+  using queries::execute_may_block_caller_t;</del>
+  inline constexpr execute_may_block_caller_t execute_may_block_caller{};
+
+  <del>namespace this-thread { // exposition only</del>
+    struct sync-wait-env; // exposition only
+    template<class S>
+        requires sender_in<S, sync-wait-env>
+      using sync-wait-type = see-below; // exposition only
+    template<class S>
+      using sync-wait-with-variant-type = see-below; // exposition only
+
+    struct sync_wait_t;
+    struct sync_wait_with_variant_t;
+  <del>}
+  using this-thread::sync_wait_t;
+    using this-thread::sync_wait_with_variant_t;</del>
+
+namespace std::execution {
+  // [exec.execute], one-way execution
+  <del>namespace execute { // exposition only</del>
+    struct execute_t;
+  <del>}
+  using execute::execute_t;</del>
+  inline constexpr execute_t execute{};
+
+  // [exec.as.awaitable]
+  <del>namespace coro-utils { // exposition only</del>
+    struct as_awaitable_t;
+  <del>}
+  using coro-utils::as_awaitable_t;</del>
+
+  </pre></blockquote>        
+</p>
+
 
 <p>In [exec.get.env]/1, edit as follows:
   <blockquote><pre><ins>std::</ins>get_env is a customization point object. For some subexpression o of type O, <ins>std::</ins>get_env(o) is expression-equivalent to
@@ -651,157 +858,6 @@ struct operation-state-task {
   </pre></blockquote>        
 </p>
 
-<p>In [exec.schedule]/2, edit as follows:
-
-  <blockquote><pre>The name <ins>execution::</ins>schedule denotes a customization point object. For some subexpression s, the expression <ins>execution::</ins>schedule(s) is expression-equivalent to:
-
-<del>tag_invoke(schedule, s)</del><ins>s.schedule()</ins>, if that expression is valid. If the <del>function selected by tag_invoke does not return</del> <ins>type of the expression is not</ins>
-a sender whose set_value completion scheduler is equivalent to s, the behavior of calling <ins>execution::</ins>schedule(s) is undefined.
-
-        Mandates: The type of the <del>tag_invoke</del> expression above satisfies sender.
-
-    Otherwise, <ins>execution::</ins>schedule(s) is ill-formed.
-
-
-  </pre></blockquote>        
-</p>
-
-<p>In [exec.just]/2, edit as follows:
-
-  <blockquote><pre>Let just-sender be the class template:
-
-template&lt;class Tag, movable-value... Ts&gt;
-struct just-sender { // exposition only
-  using is_sender = unspecified;
-  using completion_signatures =
-    execution::completion_signatures&lt;Tag(Ts...)&gt;;
-
-  tuple&lt;Ts...&gt; vs_; // exposition only
-
-  template&lt;class R&gt;
-  struct operation { // exposition only
-    tuple&lt;Ts...&gt; vs_; // exposition only
-    R r_; // exposition only
-
-    <del>friend</del> void <del>tag_invoke(start_t, operation& s</del><ins>start(</ins>) noexcept {
-      apply([this](Ts&... values) {
-        Tag()(std::move(<del>s.</del>r_), std::move(values)...);
-      }, <del>s.</del>vs_);
-    }
-  };
-
-  template&lt;receiver_of&lt;completion_signatures&gt; R&gt;
-    requires (copy_constructible&lt;Ts&gt; &&...)
-  <del>friend</del> operation&lt;decay_t&lt;R&gt;&gt; <del>tag_invoke(connect_t, </del><del>const just-sender& s, </del><ins>connect(</ins>R && r) {
-    return { <del>s.</del>vs_, std::forward<R>(r) };
-  }
-
-  template&lt;receiver_of&lt;completion_signatures&gt; R&gt;
-  <del>friend</del> operation&lt;decay_t&lt;R&gt;&gt; <del>tag_invoke(connect_t, just-sender&& s, </del><ins>connect(</ins>R && r) {
-    return { std::move(<del>s.</del>vs_), std::forward<R>(r) };
-  }
-};
-
-
-  </pre></blockquote>        
-</p>
-
-<p>In [exec.just]/3,4,5, edit as follows:
-
-  <blockquote><pre>The name <ins>execution::</ins>just denotes a customization point object.
-For some pack of subexpressions vs, let Vs be the template paramter pack decltype((vs)).
-<ins>execution::</ins>just(vs...) is expression-equivalent to just-sender&lt;set_value_t, remove_cvref_t&lt;Vs&gt;...&gt;({vs...}).
-
-The name <ins>execution::</ins>just_error denotes a customization point object. For some subexpression err, let Err be decltype((err)).
-<ins>execution::</ins>just_error(err) is expression-equivalent to just-sender&lt;set_error_t, remove_cvref_t&lt;Err&gt;&gt;({err}).
-
-The<del>n</del> name <ins>execution::</ins>just_stopped denotes a customization point object.
-<ins>execution::</ins>just_stopped() is expression-equivalent to just-sender&lt;set_stopped_t&gt;().
-  </pre></blockquote>        
-</p>
-
-<p>In [exec.just]/3,4,5, edit as follows:
-
-  <blockquote><pre>The name <ins>execution::</ins>just denotes a customization point object.
-For some pack of subexpressions vs, let Vs be the template paramter pack decltype((vs)).
-<ins>execution::</ins>just(vs...) is expression-equivalent to just-sender&lt;set_value_t, remove_cvref_t&lt;Vs&gt;...&gt;({vs...}).
-
-The name <ins>execution::</ins>just_error denotes a customization point object. For some subexpression err, let Err be decltype((err)).
-<ins>execution::</ins>just_error(err) is expression-equivalent to just-sender&lt;set_error_t, remove_cvref_t&lt;Err&gt;&gt;({err}).
-
-The<del>n</del> name <ins>execution::</ins>just_stopped denotes a customization point object.
-<ins>execution::</ins>just_stopped() is expression-equivalent to just-sender&lt;set_stopped_t&gt;().
-  </pre></blockquote>        
-</p>
-
-<p>In [exec.transfer.just]/2, edit as follows:
-
-  <blockquote><pre>The name <ins>execution::</ins>transfer_just denotes a customization point object.
-For some subexpression s and pack of subexpressions vs, let S be decltype((s)) and let Vs be the template parameter pack decltype((vs))....
-If S does not satisfy scheduler, or any type V in Vs does not satisfy movable-value, <ins>execution::</ins>transfer_just(s, vs...) is ill-formed.
-Otherwise, <ins>execution::</ins>transfer_just(s, vs...) is expression-equivalent to:
-
-<del>tag_invoke(transfer_just, s, vs...), if that expression is valid. Let as be a pack of rvalue subexpressions of types decay_t&lt;Vs&gt;...
-refering to objects direct-initilized from vs.
-If the function selected by tag_invoke does not return a sender whose asynchronous operations execute value completion operations
-on an execution agent belonging to the execution resource associated with s, with value result datums as, the behavior of calling transfer_just(s, vs...) is undefined.
-
-        Mandates: sender_of<R, set_value_t(decay_t<Vs>...), E>, where R is the type of the tag_invoke expression above, and E is the type of an environment.
-
-    Otherwise, </del><ins>execution::</ins>transfer(<ins>execution::</ins>just(vs...), s).
-  </pre></blockquote>        
-</p>
-
-<p>In [exec.read]/3, edit as follows:
-
-  <blockquote><pre>read-sender is the exposition-only class template:
-
-template&lt;class Tag&gt;
-  struct read-sender { // exposition only
-    using is_sender = unspecified;
-    template&lt;class R&gt;
-      struct operation-state { // exposition only
-        R r_; // exposition only
-
-        <del>friend</del> void <del>tag_invoke(start_t, operation-state& s</del><ins>start(</ins>) noexcept {
-          TRY-SET-VALUE(std::move(<del>s.</del>r_), Tag{}(<ins>std::</ins>get_env(<del>s.</del>r_)));
-        }
-      };
-
-    template&lt;receiver R&gt;
-    <del>friend</del> operation-state&lt;decay_t&lt;R&gt;&gt; <del>tag_invoke(connect_t, read-sender, </del><ins>connect(</ins>R && r) {
-      return { std::forward<R>(r) };
-    }
-
-    template&lt;class Env&gt;
-        requires callable&lt;Tag, Env&gt;
-      <del>friend</del> auto <del>tag_invoke(get_completion_signatures_t, read-sender, </del><ins>query(get_completion_signatures_t, </ins>Env)
-        -> completion_signatures&lt;
-          set_value_t(call-result-t&lt;Tag, Env&gt;), set_error_t(exception_ptr)>; // not defined
-
-    template&lt;class Env&gt;
-        requires nothrow-callable&lt;Tag, Env&gt;
-      <del>friend</del> auto <del>tag_invoke(get_completion_signatures_t, read-sender, </del><ins>query(get_completion_signatures_t, </ins>Env)
-        -> completion_signatures&lt;set_value_t(call-result-t&lt;Tag, Env&gt;)&gt;; // not defined
-
-    <del>friend</del> empty_env <del>tag_invoke(get_env_t, const read-sender&</del>query(get_env_t</ins>) <ins>const</ins> noexcept {
-      return {};
-    }
-  };
-
-where TRY-SET-VALUE(r, e), for two subexpressions r and e, is equivalent to:
-
-try {
-  <ins>execution::</ins>set_value(r, e);
-} catch(...) {
-  <ins>execution::</ins>set_error(r, current_exception());
-}
-
-if e is potentially-throwing; or <ins>execution::</ins>set_value(r, e) otherwise.
-
-  </pre></blockquote>        
-</p>
-
 <p>In [exec.adapt.general]3,4,5, edit as follows:
 
   <blockquote><pre>Unless otherwise specified, a sender adaptor is required to not begin executing any functions that would
@@ -836,163 +892,10 @@ of the class template is an associated entity.
   </pre></blockquote>        
 </p>
 
-<p> In [exec.on]/2, edit as follows:
-  <blockquote><pre>Let replace-scheduler(e, sch) be an expression denoting an object e'
-such that <ins>execution::</ins>get_scheduler(e) returns a copy of sch, and
-<del>tag_invoke(tag, </del><ins>tag(</ins>e', args...) is expression-equivalent to tag(e, args...)
-for all arguments args... and for all tag whose type satisfies
-forwarding-query and is not <ins>execution::</ins>get_scheduler_t.
-  </pre></blockquote>        
-</p>
-
-<p> In [exec.on]/3, edit as follows:
-  <blockquote><pre>The name on denotes a customization point object.
-For some subexpressions sch and s, let Sch be decltype((sch))
-and S be decltype((s)). If Sch does not satisfy scheduler,
-or S does not satisfy sender, on is ill-formed.
-Otherwise, the expression <ins>execution::</ins>on(sch, s)
-<del>is expression-equivalent to:
-
-  tag_invoke(on, sch, s), if that expression is valid.
-  If the function selected above does not return a sender which starts s on
-  an execution agent of the associated execution resource of sch when started,
-  the behavior of calling on(sch, s) is undefined.
-
-        Mandates: The type of the tag_invoke expression above satisfies sender.
-
-  Otherwise, </del>constructs a sender s1.
-  When s1 is connected with some receiver out_r, it:
-
-    Constructs a receiver r such that:
-
-      When <ins>execution::</ins>set_value(r) is called,
-      it calls <ins>execution::</ins>connect(s, r2), where r2 is as specified
-      below, which results in op_state3. It calls <ins>execution::</ins>start(op_state3).
-      If any of these throws an exception, it calls <ins>execution::</inS>set_error
-      on out_r, passing current_exception() as the second argument.
-
-      <ins>execution::</ins>set_error(r, e) is expression-equivalent to <execution::</ins>set_error(out_r, e).
-
-      <ins>execution::</ins>set_stopped(r) is expression-equivalent to <ins>execution::</ins>set_stopped(out_r).
-
-      <ins>std::</ins>get_env(r) is expression-equivalent to <ins>std::</ins>get_env(out_r).
-
-    Calls <ins>execution::</ins>schedule(sch), which results in s2.
-    It then calls <ins>execution::</ins>connect(s2, r), resulting in op_state2.
-
-    op_state2 is wrapped by a new operation state, op_state1,
-    that is returned to the caller.
-
-    r2 is a receiver that wraps a reference to out_r and forwards all
-    completion operations to it. In addition, <ins>std::</ins>get_env(r2) returns
-    replace-scheduler(e, sch).
-
-    When <ins>execution::</ins>start is called on op_state1,
-    it calls <ins>execution::</ins>start on op_state2.
-
-    The lifetime of op_state2, once constructed, lasts until either
-    op_state3 is constructed or op_state1 is destroyed, whichever comes first.
-    The lifetime of op_state3, once constructed, lasts until op_state1 is destroyed.
-      
-  Given subexpressions s1 and e, where s1 is a sender returned from on or a
-  copy of such, let S1 be decltype((s1)).
-  Let E' be decltype((replace-scheduler(e, sch))).
-  Then the type of <del>tag_invoke(get_completion_signatures, s1,</del><ins>s1.query(execution::get_completion_signatures, e</ins>) shall be:...
-</pre></blockquote>        
-</p>
-
-<p> In [exec.transfer]/2, edit as follows:
-  <blockquote><pre>The name <ins>execution::</ins>transfer denotes a customization point object.
-For some subexpressions sch and s, let Sch be decltype((sch))
-and S be decltype((s)). If Sch does not satisfy scheduler,
-or S does not satisfy sender, transfer is ill-formed.
-Otherwise, the expression <ins>execution::</ins>transfer(s, sch) is expression-equivalent to:
-
-    <del>tag_invoke(transfer, get_completion_scheduler&lt;set_value_t&gt;(get_env(s)), s, sch), if that expression is valid.
-
-        Mandates: The type of the tag_invoke expression above satisfies sender.
-
-    Otherwise, tag_invoke(transfer, s, sch), if that expression is valid.
-
-        Mandates: The type of the tag_invoke expression above satisfies sender.
-
-    Otherwise, </del><ins>execution::</ins>schedule_from(sch, s).
-    [DRAFTING NOTE: if we need to retain the ability to customize
-    a transfer algorithm with something resembling the first signature,
-    this needs to be fixed later. I'm not able to copy the algorihm
-    customization mechanics into this paper.]
-    If the function selected above does not return a sender which is a
-    result of a call to schedule_from(sch, s2), where s2 is a sender
-    which sends values equivalent to those sent by s, the behavior of
-    calling transfer(s, sch) is undefined.
-  </pre></blockquote>        
-</p>
-
-<p> In [exec.transfer]/3, edit as follows:
-  <blockquote><pre>For a sender t returned from <ins>execution::</ins>transfer(s, sch),
-<ins>std::</ins>get_env(t) shall return a queryable object q such that
-<ins>execution::</ins>get_completion_scheduler&lt;CPO&gt;(q) returns a copy of sch,
-where CPO is either set_value_t or set_stopped_t.
-The get_completion_scheduler&lt;set_error_t&gt; query is not implemented, as
-the scheduler cannot be guaranteed in case an error is thrown while trying to
-schedule work on the given scheduler object. For all other query objects Q
-whose type satisfies forwarding-query, the expression Q(q, args...)
-shall be equivalent to Q(<ins>std::</ins>get_env(s), args...).
-  </pre></blockquote>        
-</p>
-
-<p> In [exec.schedule.from]/2, edit as follows:
-  <blockquote><pre>The name <ins>execution::</ins>schedule_from denotes a customization point object.
-For some subexpressions sch and s, let Sch be decltype((sch))
-and S be decltype((s)). If Sch does not satisfy scheduler,
-or S does not satisfy sender, <ins>execution::</ins>schedule_from is ill-formed.
-Otherwise, the expression <ins>execution::</ins>schedule_from(sch, s)<del> is expression-equivalent to:
-
-     tag_invoke(schedule_from, sch, s), if that expression is valid.
-     If the function selected by tag_invoke does not return a sender
-     that completes on an execution agent belonging to the associated
-     execution resource of sch and completing with the same async result ([async.ops])
-     as s, the behavior of calling schedule_from(sch, s) is undefined.
-
-        Mandates: The type of the tag_invoke expression above satisfies sender.
-
-    Otherwise, </del>constructs a sender s2. When s2 is connected with some receiver out_r, it:
-
-        Constructs a receiver r such that when a receiver completion
-        operation Tag(r, args...) is called, it decay-copies args...
-        into op_state (see below) as args'... and constructs a receiver r2
-        such that:
-
-            When <ins>execution::</ins>set_value(r2) is called,
-            it calls <del>Tag</del><ins>execution::set_value</ins>(out_r, std::move(args')...).
-
-            <ins>execution::</ins>set_error(r2, e) is expression-equivalent to <ins>execution::</ins>set_error(out_r, e).
-
-            <ins>execution::</ins>set_stopped(r2) is expression-equivalent to <ins>execution::</ins>set_stopped(out_r).
-
-          It then calls <ins>execution::</ins>schedule(sch), resulting in
-          a sender s3. It then calls <ins>execution::</ins>connect(s3, r2),
-          resulting in an operation state op_state3.
-          It then calls <ins>execution::</ins>start(op_state3).
-          If any of these throws an exception, it catches it and calls
-          <ins>execution::</ins>set_error(out_r, current_exception()).
-          If any of these expressions would be ill-formed, then
-          Tag(r, args...) is ill-formed.
-
-        Calls <ins>execution::</ins>connect(s, r) resulting in
-        an operation state op_state2. If this expression would be ill-formed,
-        <ins>execution::</ins>connect(s2, out_r) is ill-formed.
-
-        Returns an operation state op_state that contains op_state2.
-        When <ins>execution::</ins>start(op_state) is called,
-        calls <ins>execution::</ins>start(op_state2).
-        The lifetime of op_state3 ends when op_state is destroyed.
-
-    Given subexpressions s2 and e, where s2 is a sender returned from
-    schedule_from or a copy of such, let S2 be decltype((s2))
-    and let E be decltype((e)). Then the type of
-    <del>tag_invoke(get_completion_signatures, s2, </del><ins>s2.query(execution::get_completion_signatures, </ins>e) shall be:...
-  </pre></blockquote>        
+<p>
+The rest of the wording in P2300 is sender adapters, and
+the changes to how algorithms are customized already remove
+tag_invokes, so I think we're done here.
 </p>
 
 </body>
