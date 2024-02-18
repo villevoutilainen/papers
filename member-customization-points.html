@@ -518,8 +518,8 @@ Library-provided sender types:
 
   <blockquote><pre>template&lt;class T&gt;
     requires <del>tag_</del>invocable&lt;as_awaitable_t, T, Derived&&gt;
-  auto await_transform(T&& value)
-    noexcept(nothrow_<del>tag_</del></ins>invocable&lt;as_awaitable_t, T, Derived&&gt;)
+      auto await_transform(T&& value)
+        noexcept(nothrow_<del>tag_</del></ins>invocable&lt;as_awaitable_t, T, Derived&&gt;)
     -> <del>tag_</del>invoke_result_t&lt;as_awaitable_t, T, Derived&&gt; {
     return <del>tag_</del>invoke(as_awaitable, std::forward&lt;T&gt;(value), static_cast&lt;Derived&&gt;(*this));
   }
@@ -681,6 +681,102 @@ struct just-sender { // exposition only
   }
 };
 
+
+  </pre></blockquote>        
+</p>
+
+<p>In [exec.just]/3,4,5, edit as follows:
+
+  <blockquote><pre>The name <ins>execution::</ins>just denotes a customization point object.
+For some pack of subexpressions vs, let Vs be the template paramter pack decltype((vs)).
+<ins>execution::</ins>just(vs...) is expression-equivalent to just-sender&lt;set_value_t, remove_cvref_t&lt;Vs&gt;...&gt;({vs...}).
+
+The name <ins>execution::</ins>just_error denotes a customization point object. For some subexpression err, let Err be decltype((err)).
+<ins>execution::</ins>just_error(err) is expression-equivalent to just-sender&lt;set_error_t, remove_cvref_t&lt;Err&gt;&gt;({err}).
+
+The<del>n</del> name <ins>execution::</ins>just_stopped denotes a customization point object.
+<ins>execution::</ins>just_stopped() is expression-equivalent to just-sender&lt;set_stopped_t&gt;().
+  </pre></blockquote>        
+</p>
+
+<p>In [exec.just]/3,4,5, edit as follows:
+
+  <blockquote><pre>The name <ins>execution::</ins>just denotes a customization point object.
+For some pack of subexpressions vs, let Vs be the template paramter pack decltype((vs)).
+<ins>execution::</ins>just(vs...) is expression-equivalent to just-sender&lt;set_value_t, remove_cvref_t&lt;Vs&gt;...&gt;({vs...}).
+
+The name <ins>execution::</ins>just_error denotes a customization point object. For some subexpression err, let Err be decltype((err)).
+<ins>execution::</ins>just_error(err) is expression-equivalent to just-sender&lt;set_error_t, remove_cvref_t&lt;Err&gt;&gt;({err}).
+
+The<del>n</del> name <ins>execution::</ins>just_stopped denotes a customization point object.
+<ins>execution::</ins>just_stopped() is expression-equivalent to just-sender&lt;set_stopped_t&gt;().
+  </pre></blockquote>        
+</p>
+
+<p>In [exec.transfer.just]/2, edit as follows:
+
+  <blockquote><pre>The name <ins>execution::</ins>transfer_just denotes a customization point object.
+For some subexpression s and pack of subexpressions vs, let S be decltype((s)) and let Vs be the template parameter pack decltype((vs))....
+If S does not satisfy scheduler, or any type V in Vs does not satisfy movable-value, <ins>execution::</ins>transfer_just(s, vs...) is ill-formed.
+Otherwise, <ins>execution::</ins>transfer_just(s, vs...) is expression-equivalent to:
+
+<del>tag_invoke(transfer_just, s, vs...), if that expression is valid. Let as be a pack of rvalue subexpressions of types decay_t&lt;Vs&gt;...
+refering to objects direct-initilized from vs.
+If the function selected by tag_invoke does not return a sender whose asynchronous operations execute value completion operations
+on an execution agent belonging to the execution resource associated with s, with value result datums as, the behavior of calling transfer_just(s, vs...) is undefined.
+
+        Mandates: sender_of<R, set_value_t(decay_t<Vs>...), E>, where R is the type of the tag_invoke expression above, and E is the type of an environment.
+
+    Otherwise, </del><ins>execution::</ins>transfer(<ins>execution::</ins>just(vs...), s).
+  </pre></blockquote>        
+</p>
+
+<p>In [exec.read]/3, edit as follows:
+
+  <blockquote><pre>read-sender is the exposition-only class template:
+
+template&lt;class Tag&gt;
+  struct read-sender { // exposition only
+    using is_sender = unspecified;
+    template&lt;class R&gt;
+      struct operation-state { // exposition only
+        R r_; // exposition only
+
+        <del>friend</del> void <del>tag_invoke(start_t, operation-state& s</del><ins>start(</ins>) noexcept {
+          TRY-SET-VALUE(std::move(<del>s.</del>r_), Tag{}(<ins>std::</ins>get_env(<del>s.</del>r_)));
+        }
+      };
+
+    template&lt;receiver R&gt;
+    <del>friend</del> operation-state&lt;decay_t&lt;R&gt;&gt; <del>tag_invoke(connect_t, read-sender, </del><ins>connect(</ins>R && r) {
+      return { std::forward<R>(r) };
+    }
+
+    template&lt;class Env&gt;
+        requires callable&lt;Tag, Env&gt;
+      <del>friend</del> auto <del>tag_invoke(get_completion_signatures_t, read-sender, </del><ins>query(get_completion_signatures_t, </ins>Env)
+        -> completion_signatures&lt;
+          set_value_t(call-result-t&lt;Tag, Env&gt;), set_error_t(exception_ptr)>; // not defined
+
+    template&lt;class Env&gt;
+        requires nothrow-callable&lt;Tag, Env&gt;
+      <del>friend</del> auto <del>tag_invoke(get_completion_signatures_t, read-sender, </del><ins>query(get_completion_signatures_t, </ins>Env)
+        -> completion_signatures&lt;set_value_t(call-result-t&lt;Tag, Env&gt;)&gt;; // not defined
+
+    <del>friend</del> empty_env <del>tag_invoke(get_env_t, const read-sender&</del>query(get_env_t</ins>) <ins>const</ins> noexcept {
+      return {};
+    }
+  };
+
+where TRY-SET-VALUE(r, e), for two subexpressions r and e, is equivalent to:
+
+try {
+  <ins>execution::</ins>set_value(r, e);
+} catch(...) {
+  <ins>execution::</ins>set_error(r, current_exception());
+}
+
+if e is potentially-throwing; or <ins>execution::</ins>set_value(r, e) otherwise.
 
   </pre></blockquote>        
 </p>
