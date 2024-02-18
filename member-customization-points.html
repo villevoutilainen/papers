@@ -376,43 +376,127 @@ mandate-nothrow-call<del>(tag_invoke, get_completion_scheduler, </del>as_const(q
 
 <p>In [exec.sched]/1, edit as follows:
   <blockquote><pre><ins>template&lt;class S&gt;
-  inline constexpr bool enable_scheduler =
+  inline constexpr bool <em>enable-scheduler</em> = // exposition only
     requires {
       typename S::is_scheduler;
     };</ins>
       
 template&lt;class S&lt;
   concept scheduler =
-    <ins>enable_scheduler&lt;remove_cvref_t&lt;S&gt;&gt; &&</ins>      
+    <ins><em>enable-scheduler</em>&lt;remove_cvref_t&lt;S&gt;&gt; &&</ins>      
     queryable&lt;S&gt; &&
     requires(S&& s, const get_completion_scheduler_t&lt;set_value_t&gt; tag) {
       { schedule(std::forward&lt;S&gt;(s)) } -> sender;
       { <del>tag_invoke(tag, std::get_env(</del>
-          schedule(std::forward&lt;S&gt;(s))<ins>.query(std::get_env).query(tag)</ins><del>))</del> } -> same_as&lt;remove_cvref_t&lt;S&gt;&gt;;
+          <ins>std::execution::</ins>schedule(std::forward&lt;S&gt;(s))<ins>.query(std::get_env).query(tag)</ins><del>))</del> } -> same_as&lt;remove_cvref_t&lt;S&gt;&gt;;
     } &&
     equality_comparable&lt;remove_cvref_t&lt;S&gt;&gt; &&
     copy_constructible&lt;remove_cvref_t&lt;S&gt;&gt;;
 </pre></blockquote>        
 </p>
 
-<p>In [exec.set.value]]/1, edit as follows:
+<p>In [exec.recv.concepts]/1, edit as follows:
+  <blockquote><pre>template<class R>
+  inline constexpr bool <del>enable_receiver</del><ins><em>enable-receiver</em> = // exposition only</em></ins>
+    requires {
+      typename R::is_receiver;
+    };
+
+template<class R>
+  concept receiver =
+    <del>enable_receiver</del><ins><em>enable-receiver</em>&lt;remove_cvref_t&lt;R&gt;&gt;</ins> &&
+    requires(const remove_cvref_t<R>& r) {
+      { <ins>std::</ins>get_env(r) } -> queryable;
+    } &&
+    move_constructible&lt;remove_cvref_t&lt;R&gt;&gt; &&  // rvalues are movable, and
+    constructible_from&lt;remove_cvref_t&lt;R&gt;, R&gt;; // lvalues are copyable
+</pre></blockquote>        
+</p>
+
+<p>Strike [exec.recv.concepts]/2:
+
+  <blockquote><pre><del>Remarks: Pursuant to [namespace.std], users can specialize enable_receiver to true for cv-unqualified program-defined types
+that model receiver, and false for types that do not. Such specializations shall be usable in constant expressions ([expr.const]) and have type const bool.</del>
+</pre></blockquote>        
+</p>
+
+<p>In [exec.set.value]/1, edit as follows:
   <blockquote><pre><ins>execution::</ins>set_value is a value completion function ([async.ops]). Its associated completion tag is <ins>execution::</ins>set_value_t.
 The expression <ins>execution::</ins>set_value(R, Vs...) for some subexpression R and pack of subexpressions Vs is ill-formed if R is an lvalue or a const rvalue.
 Otherwise, it is expression-equivalent to mandate-nothrow-call(<del>tag_invoke, set_value, </del>R<ins>.set_value<del,</del>(Vs...)</ins>).
 </pre></blockquote>        
 </p>
 
-<p>In [exec.set.error]]/1, edit as follows:
+<p>In [exec.set.error]/1, edit as follows:
   <blockquote><pre><ins>execution::</ins>set_error is an error completion function. Its associated completion tag is <ins>execution::</ins>set_error_t.
 The expression <ins>execution::</ins>set_error(R, E) for some subexpressions R and E is ill-formed if R is an lvalue or a const rvalue.
 Otherwise, it is expression-equivalent to mandate-nothrow-call(<del>tag_invoke, set_error, R, E)</del>R.set_error(E)</ins>).
 </pre></blockquote>        
 </p>
 
-<p>In [exec.set.stopped]]/1, edit as follows:
+<p>In [exec.set.stopped]/1, edit as follows:
   <blockquote><pre><ins>execution::</ins>set_stopped is a stopped completion function. Its associated completion tag is <ins>execution::</ins>set_stopped_t.
 The expression <ins>execution::</ins>set_stopped(R) for some subexpression R is ill-formed if R is an lvalue or a const rvalue.
 Otherwise, it is expression-equivalent to mandate-nothrow-call(<del>tag_invoke, set_stopped, R</del><ins>R.set_stopped()</ins>).
+</pre></blockquote>        
+</p>
+
+<p>In [exec.opstate]/1, edit as follows:
+  <blockquote><pre><ins>inline constexpr bool <em>enable-operation-state</em> = // exposition only
+    requires {
+      typename S::is_operation_state;
+    };</ins>
+
+template<class O>
+  concept operation_state =
+    <ins><em>enable-operation-state</em>&lt;O&gt; &&</ins>
+    queryable&lt;O&gt; &&
+    is_object_v&lt;O&gt; &&
+    requires (O& o) {
+      { <ins>std::execution::</ins>start(o) } noexcept;
+    };
+</pre></blockquote>        
+</p>
+
+<p>In [exec.snd.concepts]/1, edit as follows:
+  <blockquote><pre>template&lt;class S&gt;
+  inline constexpr bool <del>enable_sender</del><ins><em>enable_sender</em></ins> = <ins>// exposition only </ins>
+    requires { typename S::is_sender; };
+
+template&lt;is-awaitable&lt;env-promise&lt;empty_env&gt;&gt; S&gt; // [exec.awaitables]
+  inline constexpr bool <del>enable_sender</del><ins><em>enable-sender</em></ins>&lt;S&gt; = true;
+
+template<class S>
+  concept sender =
+    <del>enable_sender</del><ins><em>enable-sender</em></ins>&lt;remove_cvref_t&lt;S&gt;&gt; &&
+    requires (const remove_cvref_t&lt;S&gt;& s) {
+      { <ins>std::</ins>get_env(s) } -> queryable;
+    } &&
+    move_constructible&lt;remove_cvref_t&lt;S&gt;&gt; &&  // rvalues are movable, and
+    constructible_from&lt;remove_cvref_t&lt;S&gt;, S>; // lvalues are copyable
+
+template<class S, class E = empty_env>
+  concept sender_in =
+    sender&lt;S&gt; &&
+    requires (S&& s, E&& e) {
+      { <ins>std::execution::</ins>get_completion_signatures(std::forward&lt;S&gt;(s), std::forward&lt;E&gt;(e)) } ->
+        valid-completion-signatures;
+    };
+
+template<class S, class R>
+  concept sender_to =
+    sender_in&lt;S, env_of_t&lt;R&gt;&gt; &&
+    receiver_of&lt;R, completion_signatures_of_t&lt;S, env_of_t&lt;R&gt;&gt;&gt; &&
+    requires (S&& s, R&& r) {
+      <ins>std::execution::</ins>connect(std::forward&lt;S&gt;(s), std::forward&lt;R&gt;(r));
+    };
+</pre></blockquote>        
+</p>
+
+<p>Strike [exec.snd.concepts]/3:
+
+  <blockquote><pre><del>Remarks: Pursuant to [namespace.std], users can specialize enable_sender to true for cv-unqualified program-defined
+types that model sender, and false for types that do not. Such specializations shall be usable in constant expressions ([expr.const]) and have type const bool.</del>
 </pre></blockquote>        
 </p>
 
