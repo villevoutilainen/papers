@@ -500,5 +500,135 @@ types that model sender, and false for types that do not. Such specializations s
 </pre></blockquote>        
 </p>
 
+<p>In [exec.snd.concepts]/6, edit as follows:
+
+  <blockquote><pre>
+
+Library-provided sender types:
+
+    - Always expose an overload of a <del>customization of</del><ins>member</ins> connect that accepts an rvalue sender.
+
+    - Only expose an overload of a <del>customization of</del><ins>member</ins> connect that accepts an lvalue sender if they model copy_constructible.
+
+    - Model copy_constructible if they satisfy copy_constructible.
+</pre></blockquote>        
+</p>
+
+<p>In [exec.awaitables]/5, edit as follows:
+
+  <blockquote><pre>template&lt;class T&gt;
+    requires <del>tag_</del>invocable&lt;as_awaitable_t, T, Derived&&gt;
+  auto await_transform(T&& value)
+    noexcept(nothrow_<del>tag_</del></ins>invocable&lt;as_awaitable_t, T, Derived&&gt;)
+    -> <del>tag_</del>invoke_result_t&lt;as_awaitable_t, T, Derived&&gt; {
+    return <del>tag_</del>invoke(as_awaitable, std::forward&lt;T&gt;(value), static_cast&lt;Derived&&gt;(*this));
+  }
+</pre></blockquote>        
+</p>
+
+<p>In [exec.awaitables]/6, edit as follows:
+
+  <blockquote><pre>template&lt;class Env&gt;
+struct env-promise : with-await-transform&lt;env-promise&lt;Env&gt;&gt; {
+  unspecified get_return_object() noexcept;
+  unspecified initial_suspend() noexcept;
+  unspecified final_suspend() noexcept;
+  void unhandled_exception() noexcept;
+  void return_void() noexcept;
+  coroutine_handle&lt;&gt; unhandled_stopped() noexcept;
+
+  <del>friend const Env& tag_invoke(get_env_t, const env-promise&) noexcept;</del>
+  <ins>const Env& query(get_env_t, const env-promise&) noexcept;</ins>
+};
+</pre></blockquote>        
+</p>
+
+<p>In [exec.getcomplsigs]/1, edit as follows:
+
+  <blockquote><pre><ins>execution::</ins>get_completion_signatures is a customization point object.
+Let s be an expression such that decltype((s)) is S, and let e be an expression such that decltype((e)) is E.
+Then <ins>execution::</ins>get_completion_signatures(s, e) is expression-equivalent to:
+
+    <del>tag_invoke_result_t&lt;get_completion_signatures_t, S, E&gt;{}</del><ins>s.query(std::get_completion_signatures, e) if that expression is well-formed,
+
+        Mandates: valid-completion-signatures&lt;Sigs&gt;, where Sigs<del> names the type tag_invoke_result_t&lt;get_completion_signatures_t, S, E&gt;</del><ins>is the type of the expression</ins>.
+
+</pre></blockquote>        
+</p>
+
+<p>In [exec.connect]/3, edit as follows:
+
+  <blockquote><pre>Let connect-awaitable-promise be the following class:
+
+struct connect-awaitable-promise : with-await-transform<connect-awaitable-promise> {
+  DR& rcvr; // exposition only
+
+  connect-awaitable-promise(DS&, DR& r) noexcept : rcvr(r) {}
+
+  suspend_always initial_suspend() noexcept { return {}; }
+  [[noreturn]] suspend_always final_suspend() noexcept { std::terminate(); }
+  [[noreturn]] void unhandled_exception() noexcept { std::terminate(); }
+  [[noreturn]] void return_void() noexcept { std::terminate(); }
+
+  coroutine_handle<> unhandled_stopped() noexcept {
+    <del>set_stopped(</del><ins>(</ins>(DR&&) rcvr<ins>).set_stopped()</ins>);
+    return noop_coroutine();
+  }
+
+  operation-state-task get_return_object() noexcept {
+    return operation-state-task{
+      coroutine_handle&lt;connect-awaitable-promise&gt;::from_promise(*this)};
+  }
+
+  <del>friend</del> auto <del>tag_invoke</del><ins>query</ins>(get_env_t<del>, connect-awaitable-promise& self</del>)
+    noexcept(nothrow-callable&lt;<ins>std::</ins>get_env_t, const DR&&gt;) -> env_of_t&lt;const DR&&gt; {
+    return <ins>std::</ins>get_env(<del>self.</del>rcvr);
+  }
+};
+
+
+</pre></blockquote>        
+</p>
+
+<p>In [exec.connect]/4, edit as follows:
+
+  <blockquote><pre>Let operation-state-task be the following class:
+
+struct operation-state-task {
+  using promise_type = connect-awaitable-promise;
+  coroutine_handle&lt;&gt; coro; // exposition only
+
+  explicit operation-state-task(coroutine_handle&lt;&gt; h) noexcept : coro(h) {}
+  operation-state-task(operation-state-task&& o) noexcept
+    : coro(exchange(o.coro, {})) {}
+  ~operation-state-task() { if (coro) coro.destroy(); }
+
+  <del>friend</del> void <del>tag_invoke(start_t, </del><ins>start(</ins><del>operation-state-task& self</del>) noexcept {
+    <del>self.</del>coro.resume();
+  }
+};
+
+
+</pre></blockquote>        
+</p>
+
+
+<p>In [exec.connect]/6, edit as follows:
+
+  <blockquote><pre>If S does not satisfy sender or if R does not satisfy receiver, <ins>std::execution::</ins>connect(s, r) is ill-formed. Otherwise, the expression <ins>std::execution::</ins>connect(s, r) is expression-equivalent to:
+
+    <del>tag_invoke(connect, s, r)</del><ins>s.connect(r)</ins> <del>if connectable-with-tag-invoke<S, R> is modeled</del><ins>if that expression is well-formed</ins>.
+
+        Mandates: The type of the <del>tag_invoke</del> expression above satisfies operation_state.
+
+    Otherwise, <em>connect-awaitable</em>(s, r) if that expression is well-formed.
+
+    Otherwise, <ins>std::execution::</ins>connect(s, r) is ill-formed.
+
+
+
+  </pre></blockquote>        
+</p>
+
 </body>
 </html>
