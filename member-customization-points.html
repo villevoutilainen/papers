@@ -21,13 +21,13 @@
 <body>
 
 <address align=right>
-Document number: D????
+Document number: D2855R1
 <br/>
 Audience: LEWG
 <br/>
 <br/>
 <a href="mailto:ville.voutilainen@gmail.com">Ville Voutilainen</a><br/>
-2023-04-27<br/>
+2024-02-16<br/>
 </address>
 <hr/>
 <h1 align=center>Member customization points for Senders and Receivers</h1>
@@ -47,9 +47,8 @@ Audience: LEWG
 
 <p>In a nutshell, the approach in this paper is relatively straightforward;
   for all non-query customization points, ADL tag_invoke overloads become
-  member functions that take a customization-point-specific tag as an argument
-  to tell them apart from possible other member functions from other libraries.
-  Query customization points become tag_query member functions that take
+  member functions.
+  Query customization points become query member functions that take
   the query tag as an argument.</p>
 
 <p>This is because non-queries don't need to forward calls to customization
@@ -60,6 +59,8 @@ Audience: LEWG
   there is no need to write a single function for both lvalues and rvalues,
   a traditional non-static member function will do.
 </p>
+
+<h2>The overall highest-priority goal of this proposal is "No ADL, <em>anywhere</em>"</h2>
 
 </body>
 
@@ -73,7 +74,7 @@ Audience: LEWG
   becomes
 </p>
 <p>
-  <pre><blockquote><code>void start(std::execution::start_t) noexcept</code></blockquote></pre>
+  <pre><blockquote><code>void start() noexcept</code></blockquote></pre>
 </p>
 <p>
   A perfect-forwarding connect
@@ -88,7 +89,7 @@ friend auto tag_invoke(std::execution::connect_t, _Self&amp;&amp; __self, _Recei
 <p>
 <pre><blockquote></code>template &lt;__decays_to&lt;__t&gt; _Self, receiver _Receiver&gt;
     requires sender_to&lt;__copy_cvref_t&lt;_Self, _Sender&gt;, __receiver&lt;_Receiver&gt;&gt;
-auto connect(this _Self&amp;&amp; __self, std::execution::connect_t, _Receiver __rcvr)
+auto connect(this _Self&amp;&amp; __self, _Receiver __rcvr)
 </code></blockquote></pre>
 </p>
 <p>
@@ -100,7 +101,7 @@ The call
   becomes
 </p>
 <p>
-  <pre><blockquote></code>std::forward&lt;Snd&gt;(s).connect(std::execution::connect, r);
+  <pre><blockquote></code>std::forward&lt;Snd&gt;(s).connect(r);
 </code></blockquote></pre>
 </p>
 <p>A query
@@ -111,10 +112,20 @@ The call
   becomes
 </p>
 <p>
-  <pre><blockquote><code>in_place_stop_token tag_query(std::execution::get_stop_token_t) const noexcept
+  <pre><blockquote><code>in_place_stop_token query(std::execution::get_stop_token_t) const noexcept
 </code></blockquote></pre>
 </p>
 
+<h2>A note on what changed there from R0</h2>
+
+<p>After an LEWG discussion where it was suggested that tag parameters/arguments are untoward, and a very helpful suggestion that if we have wrappers anyway, we can use nested types instead, various people discussing this came to the conclusion that that feedback is right - we don't need the tags, except for query. We can add member typedef opt-ins to operation states, like we already have in receivers, and then we don't need those tag parameters/arguments.
+</p>
+<p>
+  Furthermore, we don't need to name the query function a "tag_query". It's a query, it takes a tag, but that tag-taking doesn't need to go into the name.
+  It's a member function. If you manage to mix such functions in a wrapper class, don't do it. Don't multi-inherit things into your sender wrapper, don't multi-inherit a sender wrapper and something else. Or if you do, use whatever
+  usual techniques to disambiguate declarations and calls, but mostly
+  just don't do it.
+</p>
 <h2>What does this buy us?</h2>
 
 <p>
@@ -193,6 +204,20 @@ using __x = __t&lt;_X&lt;_Ty&gt;&gt;;
   call <code>foo.connect(std::execution::connect, receiver);</code> and you
   don't have to do the no-ADL wrapping in your template parameters either.
 </p>
+<p>
+  In other words, the benefits of avoiding ADL for the implementation include
+  <ul>
+    <li>no need to wrap template parameters, to avoid making their associated namespaces be considered for ADL</li>
+    <li>no need to wrap a sender algorithm's internal operation states, senders, and receivers into nested namespaces, to limit the searched scopes when ADL would be applied on such a type</li>
+    <li>no need to wrap a sender algorithm into a nested namespaces and do a using-declaration in an outer one, again to limit the seached scopes when ADL would be applied on something else, wishing to avoid finding the functions in the namespace of the algorithm.</li>
+  </ul>
+  Some of those are fairly traditional ADL-taming techniques, some may be recent realizations. None of them are necessary when members are used, none. This should greatly simplify the implementation. The benefits for the users are mostly
+  the same, they don't need to apply any of those techniques, not for their
+  custom schedulers, not for their custom senders, not for their
+  algorithm customizations, not for anything.
+</p>
+  
+</p>
 <p>The definition of customization points is much simpler, to a ridiculous
   extent. Using them is simpler; it's a member call, everybody knows
   what that does, and many people know what scopes that looks in, and
@@ -234,14 +259,15 @@ using __x = __t&lt;_X&lt;_Ty&gt;&gt;;
 <h2>Implementation experience</h2>
 
 <p>
-  A partial work-in-progress implementation exists as a branch of
+  A very partial work-in-progress implementation exists as a branch of
   the reference implementation of P2300, at
-  <a href="https://github.com/villevoutilainen/wg21_p2300_std_execution/tree/member-only-customization-points">https://github.com/villevoutilainen/wg21_p2300_std_execution/tree/member-only-customization-points</a>
+  <a href="https://github.com/villevoutilainen/wg21_p2300_std_execution/tree/P2855_member_customization_points">https://github.com/villevoutilainen/wg21_p2300_std_execution/tree/P2855_member_customization_points</a>.
 </p>
 <p>
-  The implementation macro-migrates from ADL tag_invoke overloads to
-  static member functions and member functions using deduced this.
-  This is done to provide existing users a migration path.</p>
+  The implementation has the beginnings of a change from ADL tag_invoke overloads to
+  non-static member functions and member functions using deduced this.
+  It's rather rudimentary, and very incomplete, only covering operation states
+  at this point.
 </p>
 
 <h2>Some additional considerations</h2>
@@ -277,11 +303,117 @@ using __x = __t&lt;_X&lt;_Ty&gt;&gt;;
 <h2>Wording</h2>
 
 <p>
-  There is no specification change yet that would show what P2300 looks
-  like with this approach applied. The expectation is that that change
-  is actually fairly straightforward. The code changes certainly are,
-  although the macro-wrappings make it less readable than the end result
-  is.
+  Due to not using ADL, 16.4.6.17 Class template-heads can be removed, as it's
+  an ADL-mitigating technique that isn't necessary when member functions
+  are used for everything.
+</p>
+
+<p>
+  In [functional.syn], strike <em>tag-invoke</em>, tag_invocable, nothrow_tag_invocable, tag_invoke_result, and tag_invoke.</p>
+
+<p>In [exec.get.env]/1, edit as follows:
+  <blockquote><pre><ins>std::</ins>get_env is a customization point object. For some subexpression o of type O, <ins>std::</ins>get_env(o) is expression-equivalent to
+<del>tag_invoke(std::get_env, </del>const_cast&lt;const O&amp;&gt;(o)<ins>.query(std::get_env</ins>) if that expression is well-formed.
+</pre></blockquote>        
+</p>
+
+<p>In [exec.fwd.env]/2.1, edit the expression form:
+  <blockquote><pre>mandate-nothrow-call(<del>tag_invoke, std::forwarding_query, </del>q<ins>.forwarding_query()</ins>) if that expression is well-formed.
+</pre></blockquote>        
+</p>
+
+<p>In [exec.get.allocator]/2, edit as follows:
+  <blockquote><pre>The name <ins>std::</ins>get_allocator denotes a query object. For some subexpression r, <ins>std::</ins>get_allocator(r) is expression-equivalent to
+mandate-nothrow-call(<del>tag_invoke, std::get_allocator, </del>as_const(r)<ins>.query(std::get_allocator)</ins>).
+</pre></blockquote>        
+</p>
+
+<p>In [exec.get.stop.token]/2, edit as follows:
+  <blockquote><pre>The name <ins>std::</ins>get_stop_token denotes a query object. For some subexpression r, <ins>std::</ins>get_stop_token(r) is expression-equivalent to:
+mandate-nothrow-call(<del>tag_invoke, std::get_stop_token, </del>as_const(r)<ins>.query(std::get_stop_token)</ins>), if this expression is well-formed.
+</pre></blockquote>        
+</p>
+
+<p>In [exec.get.scheduler]/2, edit as follows:
+  <blockquote><pre>The name <ins>execution::</ins>get_scheduler denotes a query object. For some subexpression r, <ins>execution::</ins>get_scheduler(r) is expression-equivalent to
+mandate-nothrow-call(<del>tag_invoke, get_scheduler, </del>as_const(r)<ins>.query(execution::get_scheduler)</ins>).
+</pre></blockquote>        
+</p>
+
+<p>In [exec.get.scheduler]/4, edit as follows:
+  <blockquote><pre><ins>execution::</ins>get_scheduler() (with no arguments) is expression-equivalent to execution::read(<ins>execution::</ins>get_scheduler)
+</pre></blockquote>        
+</p>
+
+<p>In [exec.get.delegatee.scheduler]/2, edit as follows:
+  <blockquote><pre>The name <ins>execution::</ins>get_delegatee_scheduler denotes a query object. For some subexpression r, <ins>execution::</ins>get_delegatee_scheduler(r) is expression-equivalent to
+mandate-nothrow-call(<del>tag_invoke, get_delegatee_scheduler, </del>as_const(r)<ins>.query(execution::get_delegatee_scheduler)</ins>).
+</pre></blockquote>        
+</p>
+
+<p>In [exec.get.forward.progress.guarantee]/2, edit as follows:
+  <blockquote><pre>The name <ins>execution::</ins>get_forward_progress_guarantee denotes a query object. For some subexpression s, let S be decltype((s)).
+If S does not satisfy scheduler, get_forward_progress_guarantee is ill-formed.
+Otherwise, <ins>execution::</ins>get_forward_progress_guarantee(s) is expression-equivalent to:
+
+    mandate-nothrow-call(<del>tag_invoke, get_forward_progress_guarantee, </del>as_const(s)<ins>.query(execution::get_forward_progress_guarantee)</ins>), if this expression is well-formed.
+</pre></blockquote>        
+</p>
+
+<p>In [exec.execute.may.block.caller]/2.1, edit the expression form:
+  <blockquote><pre>mandate-nothrow-call(<del>tag_invoke, this_thread::execute_may_block_caller, </del>as_const(s).query(this_thread::execute_may_block_caller)</ins>), if this expression is well-formed.
+
+</pre></blockquote>        
+</p>
+
+<p>In [exec.completion.scheduler]]/2, edit as follows:
+  <blockquote><pre>The name <ins>execution::</ins>get_completion_scheduler denotes a query object template. For some subexpression q, let Q be decltype((q)).
+If the template argument Tag in get_completion_scheduler<Tag>(q) is not one of set_value_t, set_error_t, or set_stopped_t,
+get_completion_scheduler<Tag>(q) is ill-formed. Otherwise, <ins>execution::</ins>get_completion_scheduler<Tag>(q) is expression-equivalent to
+mandate-nothrow-call<del>(tag_invoke, get_completion_scheduler, </del>as_const(q)<ins>.query(execution::get_completion_scheduler)</ins>) if this expression is well-formed.
+</pre></blockquote>        
+</p>
+
+<p>In [exec.sched]/1, edit as follows:
+  <blockquote><pre><ins>template&lt;class S&gt;
+  inline constexpr bool enable_scheduler =
+    requires {
+      typename S::is_scheduler;
+    };</ins>
+      
+template&lt;class S&lt;
+  concept scheduler =
+    <ins>enable_scheduler&lt;remove_cvref_t&lt;S&gt;&gt; &&</ins>      
+    queryable&lt;S&gt; &&
+    requires(S&& s, const get_completion_scheduler_t&lt;set_value_t&gt; tag) {
+      { schedule(std::forward&lt;S&gt;(s)) } -> sender;
+      { <del>tag_invoke(tag, std::get_env(</del>
+          schedule(std::forward&lt;S&gt;(s))<ins>.query(std::get_env).query(tag)</ins><del>))</del> } -> same_as&lt;remove_cvref_t&lt;S&gt;&gt;;
+    } &&
+    equality_comparable&lt;remove_cvref_t&lt;S&gt;&gt; &&
+    copy_constructible&lt;remove_cvref_t&lt;S&gt;&gt;;
+</pre></blockquote>        
+</p>
+
+<p>In [exec.set.value]]/1, edit as follows:
+  <blockquote><pre><ins>execution::</ins>set_value is a value completion function ([async.ops]). Its associated completion tag is <ins>execution::</ins>set_value_t.
+The expression <ins>execution::</ins>set_value(R, Vs...) for some subexpression R and pack of subexpressions Vs is ill-formed if R is an lvalue or a const rvalue.
+Otherwise, it is expression-equivalent to mandate-nothrow-call(<del>tag_invoke, set_value, </del>R<ins>.set_value<del,</del>(Vs...)</ins>).
+</pre></blockquote>        
+</p>
+
+<p>In [exec.set.error]]/1, edit as follows:
+  <blockquote><pre><ins>execution::</ins>set_error is an error completion function. Its associated completion tag is <ins>execution::</ins>set_error_t.
+The expression <ins>execution::</ins>set_error(R, E) for some subexpressions R and E is ill-formed if R is an lvalue or a const rvalue.
+Otherwise, it is expression-equivalent to mandate-nothrow-call(<del>tag_invoke, set_error, R, E)</del>R.set_error(E)</ins>).
+</pre></blockquote>        
+</p>
+
+<p>In [exec.set.stopped]]/1, edit as follows:
+  <blockquote><pre><ins>execution::</ins>set_stopped is a stopped completion function. Its associated completion tag is <ins>execution::</ins>set_stopped_t.
+The expression <ins>execution::</ins>set_stopped(R) for some subexpression R is ill-formed if R is an lvalue or a const rvalue.
+Otherwise, it is expression-equivalent to mandate-nothrow-call(<del>tag_invoke, set_stopped, R</del><ins>R.set_stopped()</ins>).
+</pre></blockquote>        
 </p>
 
 </body>
