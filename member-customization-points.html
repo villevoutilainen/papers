@@ -630,5 +630,60 @@ struct operation-state-task {
   </pre></blockquote>        
 </p>
 
+<p>In [exec.schedule]/2, edit as follows:
+
+  <blockquote><pre>The name <ins>execution::</ins>schedule denotes a customization point object. For some subexpression s, the expression <ins>execution::</ins>schedule(s) is expression-equivalent to:
+
+<del>tag_invoke(schedule, s)</del><ins>s.schedule()</ins>, if that expression is valid. If the <del>function selected by tag_invoke does not return</del> <ins>type of the expression is not</ins>
+a sender whose set_value completion scheduler is equivalent to s, the behavior of calling <ins>execution::</ins>schedule(s) is undefined.
+
+        Mandates: The type of the <del>tag_invoke</del> expression above satisfies sender.
+
+    Otherwise, <ins>execution::</ins>schedule(s) is ill-formed.
+
+
+  </pre></blockquote>        
+</p>
+
+<p>In [exec.just]/2, edit as follows:
+
+  <blockquote><pre>Let just-sender be the class template:
+
+template&lt;class Tag, movable-value... Ts&gt;
+struct just-sender { // exposition only
+  using is_sender = unspecified;
+  using completion_signatures =
+    execution::completion_signatures&lt;Tag(Ts...)&gt;;
+
+  tuple&lt;Ts...&gt; vs_; // exposition only
+
+  template&lt;class R&gt;
+  struct operation { // exposition only
+    tuple&lt;Ts...&gt; vs_; // exposition only
+    R r_; // exposition only
+
+    <del>friend</del> void <del>tag_invoke(start_t, operation& s</del><ins>start(</ins>) noexcept {
+      apply([this](Ts&... values) {
+        Tag()(std::move(<del>s.</del>r_), std::move(values)...);
+      }, <del>s.</del>vs_);
+    }
+  };
+
+  template&lt;receiver_of&lt;completion_signatures&gt; R&gt;
+    requires (copy_constructible&lt;Ts&gt; &&...)
+  <del>friend</del> operation&lt;decay_t&lt;R&gt;&gt; <del>tag_invoke(connect_t, </del><del>const just-sender& s, </del><ins>connect(</ins>R && r) {
+    return { <del>s.</del>vs_, std::forward<R>(r) };
+  }
+
+  template&lt;receiver_of&lt;completion_signatures&gt; R&gt;
+  <del>friend</del> operation&lt;decay_t&lt;R&gt;&gt; <del>tag_invoke(connect_t, just-sender&& s, </del><ins>connect(</ins>R && r) {
+    return { std::move(<del>s.</del>vs_), std::forward<R>(r) };
+  }
+};
+
+
+  </pre></blockquote>        
+</p>
+
 </body>
 </html>
