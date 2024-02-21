@@ -21,13 +21,20 @@
 <body>
 
 <address align=right>
-Document number: D????
+Document number: P3027R0
 <br/>
 Audience: EWG
 <br/>
 <br/>
 <a href="mailto:ville.voutilainen@gmail.com">Ville Voutilainen</a><br/>
-2023-10-17<br/>
+<a href="mailto:mark.gillard@outlook.com.au">Mark Gillard</a><br/>
+<a href="mailto:mikael.kilpelainen@gmail.com">Mikael Kilpel&auml;inen</a><br/>
+<a href="mailto:isocpp@eliaskosunen.com">Elias Kosunen</a><br/>
+<a href="mailto:jari.ronkainen@sleepers.garden">Jari Ronkainen</a><br/>
+<a href="mailto:mikko.sivulainen@supercell.com">Mikko Sivulainen</a><br/>
+<a href="mailto:wg21@vasama.org">Lauri Vasama</a><br/>
+
+2023-10-26<br/>
 </address>
 <hr/>
 <h1 align=center>UFCS is a breaking change, of the absolutely worst kind</h1>
@@ -71,6 +78,13 @@ A: Yes
 </p>
 <p>
   <b>It breaks the guarantee that code that uses member function calls will <em>never</em> be subject to any of the complexity and woes of ADL</b>.
+</p>
+<p>
+  We do have proposals trying to put that guarantee into good use:
+  see <a href="https://open-std.org/JTC1/SC22/WG21/docs/papers/2023/p2855r0.html">P2855</a> for an attempt to tame the effects of ADL on how to write
+  Customization Points (and thing that aren't customizations, but just
+  opt-ins) for P2300. The UFCS proposal makes approaches like that no
+  longer work.
 </p>
 <p>Or, as another phrasing: it doesn't break the well-formedness of code. Even when it should. It doesn't break short-term "programming", as defined as
   a notion by a certain Dr. Winters.</p>
