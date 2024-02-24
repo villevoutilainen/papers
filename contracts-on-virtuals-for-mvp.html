@@ -1,0 +1,582 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+	<title>Contracts on virtual functions for the Contracts MVP</title>
+
+	<style>
+	p {text-align:justify}
+	li {text-align:justify}
+	blockquote.note
+	{
+		background-color:#E0E0E0;
+		padding-left: 15px;
+		padding-right: 15px;
+		padding-top: 1px;
+		padding-bottom: 1px;
+	}
+	ins {color:#00A000}
+	del {color:#A00000}
+	</style>
+</head>
+<body>
+
+<address align=right>
+Document number: D3165R0
+<br/>
+Audience: SG21
+<br/>
+<br/>
+<a href="mailto:ville.voutilainen@gmail.com">Ville Voutilainen</a><br/>
+2024-02-24<br/>
+</address>
+<hr/>
+<h1 align=center>Contracts on virtual functions for the Contracts MVP</h1>
+
+<h2>Abstract</h2>
+
+<p>
+  This paper proposes adding contracts on virtual functions, to the
+  contracts MVP. The overall rationale is that we shouldn't postpone
+  something as important as that post-MVP, as that would violate
+  various completeness design principles of C++, including supporting
+  all the major techniques and styles of C++. Virtual functions
+  remain a facility of fundamental importance in C++, and not supporting
+  contract checks on virtual functions would be untoward enough
+  to be called a travesty.
+</p>
+<p>
+  In a nutshell, the proposed approach is to not inherit base class
+  virtuals' contracts into the definition of an override, in any way. If
+  the function is called bypassing the virtual call mechanism, i.e.
+  with explicit qualification, only the function's own contracts
+  are evaluated. If a function is called via the virtual call mechanism,
+  the contracts of the base function in the type used for the call
+  are evaluated, in addition to the function's own contracts.
+</p>
+
+<h2>Design goals</h2>
+
+<p>
+  This proposal has the following design goals, ones that some could
+  call design principles:
+  <ul>
+  <li>the approach must work with existing ABIs, so the proposal should have no ABI impact</li>
+    
+    <li>the "canonical" substitutable designs must be relatively easy to express, but do not need to be enforced, because..</li>
+    
+    <li>..the design must allow less-canonical designs, for instance where an overrider has a stricter contract than its base</li>
+    
+  <li>the approach must not require elaborate proof of subsumption of contracts in a hierarchy</li>
+  
+  <li>the approach must seek to maintain as much of the possibility to do caller-side checking as possible, but no more</li>
+  </ul>
+</p>
+
+<p>The rationale for these is straightforward:
+  <ul>
+    <li>It would be undesirable to the point of being unacceptable if adding,
+      removing, or changing contracts in a class hierarchy causes programs to
+      no longer link. Don't get me wrong, it's not hard to imagine where
+      something like that could be beneficial, but it's also very easy to not
+      just imagine but actually find real-life scenarios where such breakage
+      would be completely unacceptable, and prevents ever adding contracts
+      to any virtually-dispatched API.</li>
+    
+    <li>There are very reasonable designs where the contract of an override is not exactly the same as that of the base, and very plausible cases of that are
+      such where the derived class requires additional (pre)conditions to be
+      established, conditions that cannot necessarily be reasonably expressed
+      as contracts of the base function, if at all.
+    </li>
+    
+    <li>We must, however, support common designs, and designs where overriders
+      have exactly the same contract as their base are common, even when
+      such overrides are called directly, bypassing the virtual call mechanism.
+    </li>
+
+    <li>It should hopefully be very easy to understand why there's a design
+      goal of not requiring subsumption proofs. We are talking about
+      arbitrarily complex expressions with arbitrary runtime behavior,
+      so computing subsumption proofs for those would, if doable at all,
+      require much more than we have in the MVP, and much more than
+      we can ostensibly expect having, and restrictions that we don't
+      want to have.</li>
+
+    <li>The possiblity to do caller-side checking is attractive, we shouldn't
+      just drop that possibility if we can avoid doing so. There are, of
+      course, some limitations to how much of that can be done for
+      a hierarchy.</li>
+  </ul>
+</p>
+
+<h2>The proposed semantics</h2>
+
+<p>As hinted in the abstract, the idea is that a virtual call checks
+  the contracts of the overrider it dispatches to, and the base function
+  contract of the type used for the call as well,
+  whereas a direct qualified call checks only the
+  contracts of the function it's calling.</p>
+
+<p>The contract on an overrider is completely independent from the
+  contract of the base function. That is, it need not be the same,
+  it need not have any sort of subsumption relationship with the
+  contract of the base function, it can be wider, it can be narrower.
+  And there is no inheritance of the base contract into the contract
+  of the overrider.</p>
+
+<p>Let's go straight into an illustrating example:
+
+  <blockquote><pre>struct Vehicle
+{
+      virtual void drive(int speed) pre(speed_within_limit(speed)); // #1
+};
+
+struct MotorVehicle : Vehicle
+{
+      bool engineRunning = false;
+      void drive(int speed) pre(engineRunning) override; // #2
+};
+
+void use1(Vehicle* veh)
+{
+      veh->drive(80); // #3
+}
+
+void use2()
+{
+      MotorVehicle mv;
+      use1(&mv);
+      mv.drive(400); // #4
+}
+</pre></blockquote>
+</p>
+
+<p>So, the intent is that the use at #3 checks both the contract at #1 and the
+  contract at #2. In other words, it's a virtual call, it dispatches to
+  #2, but since it was called via the virtual call mechanism, it also
+  checks the base contract.</p>
+
+<p>The use at #4 is still conceptually a call using the virtual dispatch
+  mechanism, but it checks only the contract at #2. It's
+  not a direct call of that function, but since the type used for the call
+  is the same as the type the overrider is a member of, or in other words,
+  the static and the dynamic type are the same, there's effectively
+  just one contract to check.
+</p>
+
+
+<p>Okay then. Let's add more layers:
+  
+<blockquote><pre>struct Vehicle
+{
+      virtual void drive(int speed) pre(speed_within_limit(speed)); // #1
+};
+
+struct WheeledVehicle : Vehicle
+{
+      bool tiresSufficientlyInflated = false;
+      void drive(int speed) pre(tiresSufficientlyInflated) override; // #2
+};
+
+struct MotorVehicle : WheeledVehicle
+{
+      bool engineRunning = false;
+      void drive(int speed) pre(engineRunning) override; // #3
+};
+
+void use1(Vehicle* veh)
+{
+      veh->drive(80); // #4
+}
+
+void use2()
+{
+      MotorVehicle mv;
+      use1(&mv);
+      mv.drive(400); // #5
+}
+</pre></blockquote>
+</p>
+
+<p>The intent is that the use at #4 checks the contract at #1
+  and the contract at #3. In other words, it's a virtual call,
+  it dispatches to #3, but since it was called via the virtual call mechanism,
+  it also  checks the base contract of the type used for the call.</p>
+
+<p>The use at #5 is still conceptually a call using the virtual dispatch
+  mechanism, but it checks only the contract at #3. It's
+  not a direct call of that function, but since the type used for the call
+  is the same as the type the overrider is a member of, or in other words,
+  the static and the dynamic type are the same, there's effectively
+  just one contract to check.
+</p>
+
+<p>Okay, fine, these are what could be called "sunshine scenarios", nothing
+  too difficult to understand in any of that, although the way the
+  direct calls work may already be debatable to some. But hold that thought,
+  let's rain on this parade for a little bit, with explanations coming later:
+
+<blockquote><pre>struct Vehicle
+{
+      virtual void drive(int speed) pre(speed_within_limit(speed)); // #1
+};
+
+struct WheeledVehicle : Vehicle
+{
+      bool tiresSufficientlyInflated = false;
+      void drive(int speed) pre(tiresSufficientlyInflated) override; // #2
+};
+
+struct MotorVehicle : WheeledVehicle
+{
+      bool engineRunning = false;
+      void drive(int speed) pre(engineRunning) override; // #3
+};
+
+void use1(WheeledVehicle* veh)
+{
+      veh->drive(80); // #4
+}
+
+void use2()
+{
+      MotorVehicle mv;
+      use1(&mv);
+      mv.drive(400); // #5
+}
+</pre></blockquote>
+
+Observe the difference in the parameter of use1(): it now takes a
+WheeledVehicle*, not a Vehicle*.
+</p>
+
+<p>
+  Here, the call at #4 checks a contract at #2 and #3, and not the contract
+  at #1.
+</p>
+
+<h2>How should this be implemented?</h2>
+
+<p>
+  The expected implementation strategy is such that for a particular
+  member function, the contracts attached to a function itself are handled
+  as usual, so for definition-side checking, the function definition
+  is amended with a call to an internal function that checks those
+  contracts. And that's it. The implementation is no different,
+  considering definition-side checking, than checking any contract.
+</p>
+<p>For the part of checking the contract of a base function based
+  on the class used for the call, client-side checking is a plausible
+  and likely implementation strategy. It is of course also fully
+  conforming to just treat that part as always having the 'ignore'
+  semantic. In addition, there are plausible ways via which
+  the whole check need not be completely done on the client-side,
+  such as calling a contract-checking function generated when
+  compiling the definition of the base function.</p>
+<p>
+  In order to <em>automatically</em>, without any effort from the programmer,
+  also check the contract on a base function, an implementation might
+  do it so that it checks those contracts on the call site. But it
+  doesn't have to, because an implementation can decide that those
+  contract checks always have the "ignore" semantic, and that's
+  fine. We'll get to how programmers can make checks more guaranteed
+  later.
+</p>
+
+<h2>First look back at our design goals and our proposed semantics</h2>
+
+<p>At this point we are really going to look at just the first goal, "must
+  work with existing ABIs, no ABI impact".</p>
+
+<p>As explained, the addition, removal, or modification of a contract
+  in a virtual function hierarchy should not be an ABI break. It would
+  be dreadful if it were, that would completely ruin what virtual functions
+  do, especially the part where you can change a definition without
+  that affecting the interface, without changing or recompiling your callers.
+  The proposed semantics are in concert with this goal, there's
+  either a direct function call in the vtbl, or a type-adjusting thunk
+  (which is an existing thing), or a (possibly type-adjusting) contract-checking
+  thunk. The size and the layout of the vtbl don't change if the contracts
+  change. In other words, there are no special additional vtbl slots,
+  so there's no churn of the amount of such things changing.</p>
+
+<h2>Non-canonical designs</h2>
+
+<p>
+
+  Here we go slightly out of order from our initial design goal
+  listing:
+<ul>
+    <li>..the design must allow less-canonical designs, for instance where an overrider has a stricter contract than its base</li>
+</ul>
+</p>
+
+<p>The approach supports this fine. Since the overrider's contracts
+  are checked, and that check doesn't incorporate any of the base
+  functions' checks, the overrider can have a narrower contract,
+  it can have a wider contract, it can do what it pleases.</p>
+
+<p>Some might find such designs counter-intuitive to the point
+  of being unnecessary. To me, such designs are compelling - it's
+  very plausible that a derived class is stateful, and is not
+  necessarily always in a state where a particular member function
+  can be called. Having the ability to write preconditions
+  that check that the object is in a suitable state seems like
+  a wonderfully useful use case for contracts.</p>
+
+<h2>Canonical designs</h2>
+
+<p>In a so-called canonical design, we want an overrider to have
+  exactly the contract its base has. Now, there's two ways to
+  skin this cat:
+  <ol>
+    <li>If you have no need for writing a contract on an overrider, just
+      don't. A call via a base pointer/reference will check the contract
+      on it, and if your implementation has the right stuff, that's all
+      you need.</li>
+      
+    <li>However, for at least two reasons, if you
+      <ul>
+        <li>want to make sure that your overrider's contract is checked
+          whenever you compile the definition of the override with
+          enforce/observe semantics, or</li>
+        
+        <li>want to repeat the contract of a base function on an overrider
+          because you want that contract to be eminently visible near the
+          overrider</li>
+      </ul>
+      you can do so. Just refactor a raw expression in a contract into
+      a predicate function, and call that predicate both in the base
+      function contract and in the overrider contract.</li>
+  </ol>
+</p>
+
+<p>In other words, for the second bullet:
+
+  <blockquote><pre>struct Vehicle
+{
+      virtual void drive(int speed) pre(speed_within_limit(speed)); // #1
+};
+
+struct WheeledVehicle : Vehicle
+{
+      void drive(int speed) pre(speed_within_limit(speed) && tires_inflated()) override; // #2
+};
+
+struct MotorVehicle : WheeledVehicle
+{
+      void drive(int speed) pre(speed_within_limit(speed) && tires_inflated() && engine_is_running()) override; // #3
+};
+
+void use1(Vehicle* veh)
+{
+      veh->drive(80); // #4
+}
+
+void use2()
+{
+      MotorVehicle mv;
+      use1(&mv);
+}
+</pre></blockquote>
+
+  Here, for every way of calling a MotorVehicle::drive, it has the
+  same contracts as calling it via a Vehicle*/Vehicle& or
+  a WheeledVehicle*/WheeledVehicle&.
+</p>
+
+<p>Yes, that requires manual orchestration. But it's doable.
+  It can be made simpler by refactoring the contract of
+  WheeledVehicle::drive() into a function, and reusing
+  that in MotorVehicle. If we want to make it simpler still,
+  we can entertain post-C++26 language extensions that
+  allow saying "give me the same contract as the base function has".
+  The important bit here is that it's possible to express that,
+  and expressing it doesn't require compromising on any of the
+  other design goals this approach has, namely the one mentioned
+  before this one, the ability to narrow/widen a contract of an overrider.
+</p>
+
+<h3>How important would it be to enforce canonical designs?</h3>
+
+<p>
+  There's been a lot of debate on this, on the reflectors and elsewhere.
+  I just wish to point out, without all that much elaboration, that
+  a narrowed/narrower contract on an overrider seems perfectly reasonable.
+  If a derived type requires additional setup before it's substitutable
+  for its base, that is explicable and plausible and reasonable. You
+  can't always establish all possible state in a constructor, so it's
+  plausible that sometimes there's room for a bug where an object
+  of a derived type is passed to code that expects a pointer/reference
+  to a base, and users expect a certain contract on it, and the object
+  of a derived type doesn't yet meet those expectations.
+</p>
+<p>
+  That's fine. Even in all the papers about substitutability, none
+  of them say that substitutability is a purely static concept, and can't
+  have dynamic aspects. A type can be non-substitutable right after
+  construction, and substitutable once certain additional methods
+  are performed on it. Most importantly, contracts can <em>check</em>
+  that, once we indeed allow an overrider to have a narrower contract
+  than its base function. That seems incredibly useful.
+</p>
+<p>Thus, summa summarum, considering all the design goals enumerated
+  in this paper, it's more important to allow meeting all those goals
+  than to enforce a particular one at the cost of others. If a user
+  wishes to perform such enforcement, analysis tools and coding guidelines
+  are a plausible way to get it.</p>
+
+<h2>Multiple inheritance</h2>
+
+<p>Multiple inheritance will Just Work, without any additional rules.</p>
+
+<p>If we look at an example like
+  <blockquote><pre>struct B1 {
+    virtual void f(int x) pre(x >= 0);
+};
+
+struct B2 {
+    virtual void f(int x) pre(x >= 0 && x < 140);
+};
+
+struct D : B1, B2 {
+    void f(int x) pre(x > 42 && x < 100);
+};
+
+void use1(B1* b) {
+    b->f(66);
+}
+
+void use2(B2* b) {
+    b->f(66);
+}
+
+void use3()
+{
+    D d;
+    use1(&d);
+    use2(&d);
+}
+</pre></blockquote>
+  the example is well-formed and contains no contract violations. The call
+  in use1() will check the contracts of B1::f() and D::f(), the call in
+  use2() will check the contracts of B2::f() and D::f().
+</p>
+
+<p>Virtual bases and pure virtual functions will also work without any additional special
+  rules:
+  <blockquote><pre>struct B {
+    virtual void f(int x) pre(x >= 0);
+};
+
+struct B1 : virtual B {
+    virtual void f(int x) pre(x >= 0) = 0;
+};
+
+struct B2 : virtual B {
+    virtual void f(int x) pre(x >= 0 && x < 140) = 0;
+};
+
+struct D : B1, B2 {
+    void f(int x) pre(x > 42 && x < 100);
+};
+
+void use1(B* b) {
+    b->f(66);
+}
+
+void use2(B* b) {
+    b->f(66);
+}
+
+void use3()
+{
+    D d;
+    use1(&d);
+    use2(&d);
+}
+</pre></blockquote>
+</p>
+
+<h2>Recap</h2>
+
+<h3>The downsides</h3>
+
+<p>This approach
+  <ul>
+    <li>doesn't provide any language-level mechanisms to check a canonical
+      design to be canonical.</li>
+    <li>thus, if such designs are desired to be verified, some sort of other analysis is necessary, has false positives, and may not be applicable at a wide
+      scale due to those false positives.</li>
+    <li>doesn't make it very easy to have both the interface and implementation
+      contracts of a virtual call verified.</li>
+  </ul>
+</p>
+
+<h3>Rebuttals of the downsides, and the upsides</h3>
+
+<p>
+  The rebuttals:
+  <ul>
+    <li>we can have potentially have language-level mechanisms to check a canonical
+      design to be canonical, post-C++26.</li>
+    <li>writing canonical designs isn't altogether hard: use a predicate function in a base function contract, use the same predicate in the overrider's contract.</li>
+    <li>it's unlike to be hard to have both the interface and implementation
+      contracts of a virtual call verified, compile both the library
+      and its client with checks turned on.</li>
+  </ul>
+</p>
+<p>
+  Further upsides:
+  <ul>
+    <li>the model is simple; it's not trivially easy to understand if you have
+      presumptions about canonical designs on your mind, but it's easy
+      to explain that the conntracts of overrides are independent from the
+      base contracts.</li>
+    <li>the rules of the model are simple, the checking of contracts on
+      overrides requires no special rules, multiple inheritance requires
+      no special rules, diamond inheritance with a virtual base requires
+      no special rules.</li>
+    <li>the model is general and flexible, and closes no extension doors.
+      It supports all the various use cases brought forward, of which
+      the ability to narrow a contract on an overrider will be very important
+      for stateful derived classes.</li>
+  </ul>
+</p>
+<p>Finally, overall, even if the model isn't the most trivially easy
+  to understand, it checks all the design goal boxes thrown at it,
+  and all that is much better than having a contracts ability in C++
+  that doesn't support one of the fundamentally important parts of
+  C++. My take on this continues to be that we should adopt
+  this approach into the Contracts MVP before it's forwarded for
+  design review by EWG and LEWG.</p>
+
+<h2>Wording</h2>
+
+<p>The wording proposed is as a delta against P2900.</p>
+
+<p>In [dcl.contract.func], remove the restriction that
+  virtual functions can't have contracts:
+
+  <blockquote><pre>A coroutine ([dcl.fct.def.coroutine]),
+<del>a virtual function ([class.virtual]), </del>a deleted function ([dcl.fct.def.delete]),
+or a function defaulted on its first declaration ([dcl.fct.def.default])
+may not have a function-contract-specifier-seq.
+  </pre></blockquote>
+</p>
+
+<p>
+  Modify the modification to [expr.call], paragraph 6
+  <blockquote><pre>When a function is called, each parameter ([dcl.fct])
+is initialized ([dcl.init], [class.copy.ctor]) with its corresponding
+argument and each precondition assertion([dcl.contract.func)] is evaluated.
+<ins>If the selected function is virtual, each precondition assertion
+of the statically chosen function is evaluated, and after those evaluations,
+each precondition of the final overrider is evaluated.
+Each of the postcondition assertions of the statically chosen function
+is evaluated after the postcondition assertions of the final overrider
+have been evaluated.</ins>
+</pre></blockquote>
+</p>
+
+</body>
+</html>
