@@ -569,14 +569,37 @@ may not have a function-contract-specifier-seq.
   <blockquote><pre>When a function is called, each parameter ([dcl.fct])
 is initialized ([dcl.init], [class.copy.ctor]) with its corresponding
 argument and each precondition assertion([dcl.contract.func)] is evaluated.
-<ins>If the selected function is virtual, each precondition assertion
-of the statically chosen function is evaluated, and after those evaluations,
-each precondition of the final overrider is evaluated.
-Each of the postcondition assertions of the statically chosen function
-is evaluated after the postcondition assertions of the final overrider
-have been evaluated.</ins>
+<ins>If the selected function is virtual, the precondition assertions
+of both the statically chosen function and the final overrider are evaluated.</ins>
+</pre></blockquote>
+
+<p>
+  Modify the modification to [expr.call], paragraph 7
+<blockquote><pre>The postfix-expression is sequenced before each expression in the expression-list
+and any default argument. The initialization of a parameter,
+including every associated value
+computation and side effect, is indeterminately sequenced
+with respect to that of any other parameter.
+These evaluations are sequenced before the evaluation of the precondition
+assertions of the <ins>statically chosen</ins> function,
+<del>which are evaluated in sequence</del>
+<ins>which are, in turn, sequenced before the evaluation of the
+precondition assertions of the final overrider, if any.
+All precondition assertions of a function are evaluated in sequence ([dcl.contract.func]).</ins>
 </pre></blockquote>
 </p>
 
+<p>Add a new modification to [expr.call], paragraph 8
+<blockquote><pre>The result of a function call is the result of the possibly-converted operand
+of the return statement (8.7.4) that transferred control
+out of the called function (if any), except in a virtual function call
+if the return type of the final overrider is different from the return type
+of the statically chosen function, the value returned
+from the final overrider is converted to the return type of the
+statically chosen function.
+<ins>Then, in a virtual function call, the postconditions of the
+statically chosen function are evaluated in sequence ([dcl.contract.func]).</ins>
+</pre></blockquote>
+</p>
 </body>
 </html>
