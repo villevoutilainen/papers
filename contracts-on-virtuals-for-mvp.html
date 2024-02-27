@@ -688,18 +688,18 @@ private:
       int current_speed;
 public:
       bool speed_within_limit(int speed) const;
-      virtual void drive(int speed) pre(speed_within_limit(speed));
+      virtual void drive(int speed) pre(speed_within_limit(speed)); // 10.1.1
 };
 
 struct MotorVehicle : Vehicle
 {
       bool engineRunning = false;
-      void drive(int speed) pre(engineRunning &amp;&amp; Vehicle::speed_within_limit(speed)) override;
+      void drive(int speed) pre(engineRunning &amp;&amp; Vehicle::speed_within_limit(speed)) override; // 10.1.2
 };
 
 void use1(Vehicle* veh)
 {
-      veh->drive(80);
+      veh->drive(80); // 10.1.3
 }
 
 void use2()
@@ -715,6 +715,12 @@ void use2()
   does. But there are techniques like the one above that make it relatively
   easy to do. Actual enforcing mechanisms are left for future extensions,
   although there's no particular guarantee that we'll get such extensions.
+  But nevertheless, the call at 10.1.3 evaluates both the precondition
+  at 10.1.1 and the precondition at 10.1.2, because the one at 10.1.1
+  is evaluated because we called through a Vehicle, so that's the
+  "entry point"/interface/handle contract check that gets evaluated,
+  and the final overrider is 10.1.2, so the contract check of that
+  gets evaluated as well.
 </p>
 
 <p>Q3:</p>
