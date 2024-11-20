@@ -1,0 +1,119 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+	<title>The default access for reflection APIs</title>
+
+	<style>
+	p {text-align:justify}
+	li {text-align:justify}
+	blockquote.note
+	{
+		background-color:#E0E0E0;
+		padding-left: 15px;
+		padding-right: 15px;
+		padding-top: 1px;
+		padding-bottom: 1px;
+	}
+	ins {color:#00A000}
+	del {color:#A00000}
+	</style>
+</head>
+<body>
+
+<address align=right>
+Document number: D3408R0
+<br/>
+Audience: WG21
+<br/>
+<br/>
+<a href="mailto:ville.voutilainen@gmail.com">Ville Voutilainen</a><br/>
+
+2024-11-20<br/>
+</address>
+<hr/>
+<h1 align=center>The default access for reflection APIs</h1>
+
+<h2>Abstract</h2>
+
+<p>This paper explains the concerns some people have about
+  the default access approach of the reflection APIs in
+  <a href="https://wg21.link/p2996">P2996</a>.
+</p>
+<p>In short, we have a function named 'members_of', which gives
+  a reflection of every member of a class, regardless of access.
+  We have a plan to add a function named 'get_accessible_members',
+  which gives a reflection of members accessible by a given context.
+<p>
+<p>Considering that the shorter and nicer name is given to the
+  function that effectively bypasses access, we can reasonably
+  say that our default is that reflection bypasses access.
+</p>
+
+<p>EWG polled the matter, and there was no consensus to make
+  a change, but there was a majority very near to consensus
+  numbers for doing so.</p>
+
+<p>Some compiler vendors are seriously considering warning
+  about the uses of members_of, and their desire to warn
+  might become less strong if the naming were different.</p>
+
+<h2>The problem</h2>
+
+<p>Various library authors, including standard library vendors,
+  do not want users to depend on private implementation details,
+  and do not want users to form untoward dependencies on such details.</p>
+
+<p>While it's understood that various use cases like allocators
+  and relocation traits written before such traits are standardized
+  can benefit from being able to introspect types and other properties
+  of even private data members, there is a strong preference that
+  that is done judiciously, and with a clearer indication that
+  such uses accept the possibility that they are sometimes broken
+  by refactorings done by library authors.
+<p>
+
+<p>It is thought to be so that a short and innocent name like 'members_of'
+  doesn't convey that sufficiently. Hence, there is a suggestion to
+  give the form of reflection that respects access controls the
+  short and convenient name, and to give access-bypassing reflection
+  facilities a less convenient and a more inconvenient name.</p>
+
+<h2>The proposed solution</h2>
+
+<p>Two options:
+  <ol>
+    <li>Disambiguate with an "inconvenience" tag:
+
+      <ul>
+	<li>Take the about-to-be-proposed get_accessible_members, and give those semantics the name 'members_of'.</li>
+	<li>Provide an alternate overload that takes a tag-type object
+	</li>
+      </ul>
+      So the different calls would look roughly like
+	<pre><blockquote>members_of(^^Foo, access_context::current()) // or leave out the argument
+members_of(^^Foo, include_inaccessible)</blockquote></pre>
+    </li>
+    <li>Separate the functionality to different function names:
+	<pre><blockquote>members_of(^^Foo, access_context::current()) // or leave out the argument
+get_members_including_inaccessible()</blockquote></pre>
+    </li>
+  </ol>
+
+  It's important to keep two things in mind here:
+  <ul>
+    <li>the access-obeying API needs to return different things in different contexts, sometimes</li>
+    <li>the access-bypassing API returns the same result in all contexts.
+  </ul>
+  So, the set of included inaccessible parts may be empty for the access-bypassing query. But it does return the same result everywhere. It returns the union set of accessible and inaccessible members, and what is in which set changes
+  in different contexts, but the union is the same everywhere.
+</p>
+<p>Consider that difference in how the functions work, it might be more
+  reasonable to have the functions be more separated than being
+  different overloads in the same overload set.
+</p>
+<p>The API should still likely include a 'has_inaccessible_member', for
+  cases where the user uses the access-obeying API but wants to know
+  whether the set not included in its result is empty.
+</p>
+</body>
+</html>
