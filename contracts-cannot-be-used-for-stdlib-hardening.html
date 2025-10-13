@@ -1,0 +1,207 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+	<title>C++26 Contracts cannot be used for standard library hardening</title>
+
+	<style>
+	p {text-align:justify}
+	li {text-align:justify}
+	blockquote.note
+	{
+		background-color:#E0E0E0;
+		padding-left: 15px;
+		padding-right: 15px;
+		padding-top: 1px;
+		padding-bottom: 1px;
+	}
+	ins {color:#00A000}
+	del {color:#A00000}
+	</style>
+</head>
+<body>
+
+<address align=right>
+Document number: D3878R0<br/>
+Audience: LEWG, LWG<br/>
+<br/>
+<br/>
+<a href="mailto:ville.voutilainen@gmail.com">Ville Voutilainen</a><br/>
+<a href="mailto:cxx@kayari.org">Jonathan Wakely</a><br/>
+<a href="mailto:jhs@edg.com">John Spicer</a><br/>
+2025-10-07<br/>
+</address>
+<hr/>
+<h1 align=center>C++26 Contracts cannot be used for standard library hardening</h1>
+
+<h2>Abstract</h2>
+
+<p>
+  The C++26 IS draft specifies that hardened preconditions may be,
+  in a hardened implementation, evaluated with a non-terminating
+  semantic. This is unacceptable, and destroys the guarantees
+  given by standard library hardening.
+</p>
+<p>Hand-waving about implementation-defined means and mechanisms
+  for selecting contract-evaluation semantics for individual contracts
+  doesn't help; some standard library implementations need to work
+  with multiple compilers, and there's no known way to request
+  multiple different compilers to make sure that the hardened
+  preconditions are never evaluated with a checked but non-terminating
+  semantic (i.e. 'observe').</p>
+<p>The outcome of this is that despite best intentions, C++26
+  standard library implementations cannot implement hardened
+  preconditions in terms of contracts. And there's another reason why
+  they can't - standard library hardening must be allowed to be turned
+  on regardless of what the evaluation semantics of contracts in
+  the rest of the program and even in the same TU are.</p>
+<p>Integrating C++26 contracts into standard library hardening is
+  an unimplemented specification exercise that must be undone before
+  C++26 ships.</p>
+
+<h2>This concern is nowhere to be seen in P3846</h2>
+
+<p>There are two NB comments asking for contracts to be decoupled
+  from standard library hardening, and those are FR-001-014 (<a href="https://github.com/cplusplus/nbballot/issues/588">github</a>) and US 3-015
+  (<a href="https://github.com/cplusplus/nbballot/issues/589">github</a>).
+</p>
+<p><a href="https://open-std.org/JTC1/SC22/WG21/docs/papers/2025/p3846r0.pdf">P3846</a> doesn't even mention these NB comments, and doesn't address them.</p>
+
+<h2>A library-wide 'observe' mode is not a thing for a hardened implementation</h2>
+
+<p>The specification says, in [structure.specifications]/3.5.1, with the problematic part bolded,</p>
+<p><pre><blockquote>When invoking the function in a hardened implementation, prior to any other observable side
+effects of the function, one or more contract assertions whose predicates are as described in the
+hardened precondition are evaluated with a checking semantic (6.11.2). <b>If any of these assertions
+is evaluated with a non-terminating semantic and the contract-violation handler returns, the
+program has undefined behavior</b>.</blockquote></pre></p>
+
+<p>That is completely unacceptable for a hardened implementation. A
+  hardened implementation is a memory safety mechanism, and it's not
+  memory-safe to run into the UB that results in calling a library
+  function violating its preconditions.</p>
+
+<p>Yes, there are ostensible use cases for having observed hardened
+  preconditions, for code that's common in the wild, doesn't actually
+  run into abstract machine UB, and works fine. The current specifications
+  of hardened preconditions leave those cases out due to the language
+  not providing a way to select specific semantics for individual
+  contracts, portably. Such cases are an exception to the general rule.
+</p>
+<p>But that's a far cry from somehow being able to select an observe
+  semantic for other hardened preconditions. They have one purpose,
+  and only one, and that is to <b>guarantee</b> that violating them doesn't
+  lead to UB. Ever. That's what hardened implementations do
+  with them, and that's what hardened implementations will need
+  to continue to do with them, without compromise of any kind,
+  be it whatever other choice for contract semantics is made
+  for other code or something else, even in the same TU.</p>
+
+<h2>The wished-for "grand unification" doesn't work, and cannot work</h2>
+
+<p>P3846 suggests that there should be "Consistency across libraries".
+  What it seems to mean by that is that all checking mechanisms
+  are unified under the same control mechanism, and in the C++26
+  timeframe, that means whatever mechanism for selecting contract
+  evaluation semantics.</p>
+
+<p>That doesn't work. It's a requirement of paramount and non-negotiable
+  importance to be able to select a hardened
+  standard library implementation regardless of what's done with any
+  and all other checking mechanisms. And when such a hardened implementation
+  is selected, it must never continue into the stdlib code in case of hardened precondition violations, it must make sure that that code isn't entered.
+  It needs to do that now, forever, and without any "maybe" period in between.
+</p>
+<p>That means that the hardened preconditions are, and have to be,
+  forever decoupled
+  from the rest of the program, including whatever checking mechanisms
+  in the same TU. You can have your own contracts, and set them
+  to ignore or observe, or enforce or quick_enforce, and you can still
+  rely on the hardened preconditions not to continue into the stdlib
+  code and cause UB. Not all of that UB is just benign dereferences of
+  null pointers that the OS will catch for you anyway. That is, if you're
+  even using an OS.</p>
+
+<h2>Is this QoI?</h2>
+
+<p>A stdlib implementation can certainly make sure that the hardened
+  preconditions are always evaluated with a terminating semantic.
+  But that means that semantic is quick_enforce. C++26 contracts
+  do not have a facility that allows calling a possibly replaced
+  violation handler (they do allow invoking the implementation-defined
+  default handler, but not a replaced one),
+  so what an implementation would need to do
+  is not use contracts the language facility in its code, and
+  just terminate directly, without invoking any violation handler.</p>
+<p>But the problem of 'observe' (and even worse, 'ignore')
+  being a possibility allowed by the specification remains. Leaving
+  that possibility in is just silly. No standard library implementation
+  should allow for that possibility, it should just be removed from
+  the specification.</p>
+
+<p>A C++ implementation would have two options, if it tried to use
+  contracts:
+  <ol>
+    <li>Specify library-precondition-specific evaluation semantics
+      for the hardened preconditions. This option isn't viable,
+      because a mechanism for doing that doesn't exist in C++26
+      contracts, and it's also infeasible to try to rely on compiler-specific
+      mechanisms for portable stdlib implementations that need to work
+      with multiple compilers, and in multiple modes. There's more than
+      two of those for libstdc++, for example.</li>
+    <li>Make it so, with the help of the compiler,
+      that when hardening is enabled, all contracts in the
+      TU are given a terminating evaluation semantic. This is
+      <ul>
+	<li>draconian, it's unreasonable to do that also for all user contracts in the user's own code</li>
+	<li>infeasible still, because standard library hardening can be
+      enabled separately from the rest of the hardening facilities
+      that compilers provide, so relying on the shortcut selection
+      for a bunch of hardening options (i.e. 'g++ -fhardened') still
+	  doesn't do the right thing, and doesn't suffice.</li>
+    </li>
+  </ol>
+</p>
+<p>A far more straightforward option is to just not use contracts.</p>
+	    
+<h2>Rumination summary</h2>
+
+<p>A hardened C++26 standard library implementation cannot be implemented
+  using Contracts the language facility. The language facility
+  doesn't provide what a hardened stdlib implementation needs.</p>
+
+<h2>Wording</h2>
+
+<h3>Option one</h3>
+
+<p>Drafting note: this option strives for a minimal change to the wording.
+  The second option is arguably clearer in what its consequences are.</p>
+
+<p>In [structure.specifications]/3.1.5, edit as follows:</p>
+
+<p><pre><blockquote>When invoking the function in a hardened implementation, prior to any other observable side
+effects of the function, <del>one or more</del> contract assertions whose predicates are as described in the
+hardened precondition are evaluated with a <del>checking</del><ins>terminating</ins> semantic (6.11.2). <del>If any of these assertions
+is evaluated with a non-terminating semantic and the contract-violation handler returns, the
+program has undefined behavior.</del></blockquote></pre></p>
+
+<h3>Option two</h3>
+
+<p>Drafting note: the selection between enforce and quick_enforce
+  is implementation-defined, and it's not observable whether an
+  implementation-defined handler is called in case of quick_enforce.
+  This option says that in a note that merely explains normative
+  wording elsewhere, and grants no new powers.</p>
+  
+<p><pre><blockquote>When invoking the function in a hardened implementation, prior to any other observable side
+effects of the function, <del>one or more</del> contract assertions whose predicates are as described in the
+hardened precondition are evaluated with a <del>checking</del><ins>terminating</ins> semantic (6.11.2).
+<ins>[Note: It is implementation-defined whether any handler function,
+  including the contract violation handler, or an implementation-defined
+  handler, is called prior to terminating the program. --end Note]</ins>
+<del>If any of these assertions
+is evaluated with a non-terminating semantic and the contract-violation handler returns, the
+program has undefined behavior.</del></blockquote></pre></p>
+</body>
+
+</html>
