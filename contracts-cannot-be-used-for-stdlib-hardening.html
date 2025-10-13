@@ -2,7 +2,7 @@
         "http://www.w3.org/TR/html4/loose.dtd">
 <html>
 <head>
-	<title>C++26 Contracts cannot be used for standard library hardening</title>
+	<title>C++26 Contracts are not a good fit for standard library hardening</title>
 
 	<style>
 	p {text-align:justify}
@@ -32,15 +32,14 @@ Audience: LEWG, LWG<br/>
 2025-10-07<br/>
 </address>
 <hr/>
-<h1 align=center>C++26 Contracts cannot be used for standard library hardening</h1>
+<h1 align=center>C++26 Contracts are not a good fit for standard library hardening</h1>
 
 <h2>Abstract</h2>
 
 <p>
   The C++26 IS draft specifies that hardened preconditions may be,
   in a hardened implementation, evaluated with a non-terminating
-  semantic. This is unacceptable, and destroys the guarantees
-  given by standard library hardening.
+  semantic. This can result in violations of hardened preconditions being undefined behaviour, rather than guaranteed to be diagnosed, which defeats the purpose of using a hardened implementation.
 </p>
 <p>Hand-waving about implementation-defined means and mechanisms
   for selecting contract-evaluation semantics for individual contracts
@@ -114,7 +113,7 @@ program has undefined behavior</b>.</blockquote></pre></p>
 </p>
 <p>That means that the hardened preconditions are, and have to be,
   forever decoupled
-  from the rest of the program, including whatever checking mechanisms
+  from the rest of the program, including the use of whatever checking mechanisms (contracts on user code, various forms of asserts in/on user code)
   in the same TU. You can have your own contracts, and set them
   to ignore or observe, or enforce or quick_enforce, and you can still
   rely on the hardened preconditions not to continue into the stdlib
@@ -133,9 +132,10 @@ program has undefined behavior</b>.</blockquote></pre></p>
   so what an implementation would need to do
   is not use contracts the language facility in its code, and
   just terminate directly, without invoking any violation handler.</p>
-<p>But the problem of 'observe' (and even worse, 'ignore')
+<p>But the problem of 'observe'
   being a possibility allowed by the specification remains. Leaving
-  that possibility in is just silly. No standard library implementation
+  that possibility of observe in is just silly.
+  No standard library implementation
   should allow for that possibility, it should just be removed from
   the specification.</p>
 
@@ -147,8 +147,7 @@ program has undefined behavior</b>.</blockquote></pre></p>
       because a mechanism for doing that doesn't exist in C++26
       contracts, and it's also infeasible to try to rely on compiler-specific
       mechanisms for portable stdlib implementations that need to work
-      with multiple compilers, and in multiple modes. There's more than
-      two of those for libstdc++, for example.</li>
+      with multiple compilers, and in multiple modes. Libstdc++, libc++, and MSVC STL support at least three compilers each, so cannot make use of compiler-specific mechanisms for using a particular semantic for hardened preconditions even when the rest of the program uses 'ignore'.</li>
     <li>Make it so, with the help of the compiler,
       that when hardening is enabled, all contracts in the
       TU are given a terminating evaluation semantic. This is
@@ -163,7 +162,9 @@ program has undefined behavior</b>.</blockquote></pre></p>
   </ol>
 </p>
 <p>A far more straightforward option is to just not use contracts.</p>
-	    
+
+<p>The stdlib hardening paper changed between R2 and the approved R4. Originally it was unspecified how the checks were done, only that a failure would invoke a handler and then terminate. That had the correct desired semantics.</p>
+
 <h2>Rumination summary</h2>
 
 <p>A hardened C++26 standard library implementation cannot be implemented
