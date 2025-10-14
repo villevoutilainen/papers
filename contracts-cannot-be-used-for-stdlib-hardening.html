@@ -86,7 +86,8 @@ program has undefined behavior</b>.</blockquote></pre></p>
   of hardened preconditions leave those cases out due to the language
   not providing a way to select specific semantics for individual
   contracts, portably. Such cases are an exception to the general rule.
-  As an example of such a use case, consider a[n] for a sequence container. It has a hardened precondition "n &lt; a.size() is true". We could give it an
+  As an example of such a use case, consider a[n] (or rather, &amp;vec[vec.size()], for a very concrete example that apparently appears in the wild)
+  for a sequence container. It has a hardened precondition "n &lt; a.size() is true". We could give it an
   always-terminating precondition "n &lt;= a.size()", and an observed
   precondition "n &lt; a.size()" if we could express that with the language
   facility, but we can't do that yet.
