@@ -177,10 +177,11 @@ program has undefined behavior</b>.</blockquote></pre></p>
 
 <h2>Wording</h2>
 
-<h3>Option one</h3>
-
-<p>Drafting note: this option strives for a minimal change to the wording.
-  The second option is arguably clearer in what its consequences are.</p>
+<p>Drafting note: this wording strives for a minimal change to the wording.
+  It doesn't attempt to provide a resolution to the NB comments that
+  ask for standard library hardening to be completely decoupled from
+  contracts. This wording does allow such a completely decoupled
+  implementation, by implementing essentially a hard-coded quick_enforce.</p>
 
 <p>In [structure.specifications]/3.1.5, edit as follows:</p>
 
@@ -190,23 +191,6 @@ hardened precondition are evaluated with a <del>checking</del><ins>terminating</
 is evaluated with a non-terminating semantic and the contract-violation handler returns, the
 program has undefined behavior.</del></blockquote></pre></p>
 
-<h3>Option two</h3>
-
-<p>Drafting note: the selection between enforce and quick_enforce
-  is implementation-defined, and it's not observable whether an
-  implementation-defined handler is called in case of quick_enforce.
-  This option says that in a note that merely explains normative
-  wording elsewhere, and grants no new powers.</p>
-  
-<p><pre><blockquote>When invoking the function in a hardened implementation, prior to any other observable side
-effects of the function, <del>one or more</del> contract assertions whose predicates are as described in the
-hardened precondition are evaluated with a <del>checking</del><ins>terminating</ins> semantic (6.11.2).
-<ins>[Note: It is implementation-defined whether any handler function,
-  including the contract violation handler, or an implementation-defined
-  handler, is called prior to terminating the program. --end Note]</ins>
-<del>If any of these assertions
-is evaluated with a non-terminating semantic and the contract-violation handler returns, the
-program has undefined behavior.</del></blockquote></pre></p>
 </body>
 
 </html>
