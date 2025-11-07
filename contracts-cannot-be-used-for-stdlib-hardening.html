@@ -2,7 +2,7 @@
         "http://www.w3.org/TR/html4/loose.dtd">
 <html>
 <head>
-	<title>C++26 Contracts are not a good fit for standard library hardening</title>
+	<title>Standard library hardening should not use the 'observe' semantic</title>
 
 	<style>
 	p {text-align:justify}
@@ -22,17 +22,25 @@
 <body>
 
 <address align=right>
-Document number: P3878R0<br/>
+Document number: P3878R1<br/>
 Audience: LEWG, LWG<br/>
 <br/>
 <br/>
 <a href="mailto:ville.voutilainen@gmail.com">Ville Voutilainen</a><br/>
 <a href="mailto:cxx@kayari.org">Jonathan Wakely</a><br/>
 <a href="mailto:jhs@edg.com">John Spicer</a><br/>
-2025-10-07<br/>
+2025-11-06<br/>
 </address>
 <hr/>
-<h1 align=center>C++26 Contracts are not a good fit for standard library hardening</h1>
+<h1 align=center>Standard library hardening should not use the 'observe' semantic</h1>
+
+<h2>Revision history</h2>
+
+<p>The first revision of this paper presented information on some problems
+  of using C++26 Contracts for standard library hardening. The second revision
+  no longer includes most of that, we now just propose a change to ensure that
+  undefined behaviour is not allowed after a hardened precondition is violated.
+  </p>
 
 <h2>Abstract</h2>
 
@@ -41,32 +49,8 @@ Audience: LEWG, LWG<br/>
   in a hardened implementation, evaluated with a non-terminating
   semantic. This can result in violations of hardened preconditions being undefined behaviour, rather than guaranteed to be diagnosed, which defeats the purpose of using a hardened implementation.
 </p>
-<p>Hand-waving about implementation-defined means and mechanisms
-  for selecting contract-evaluation semantics for individual contracts
-  doesn't help; some standard library implementations need to work
-  with multiple compilers, and there's no known way to request
-  multiple different compilers to make sure that the hardened
-  preconditions are never evaluated with a checked but non-terminating
-  semantic (i.e. 'observe').</p>
-<p>The outcome of this is that despite best intentions, C++26
-  standard library implementations cannot implement hardened
-  preconditions in terms of contracts. And there's another reason why
-  they can't - standard library hardening must be allowed to be turned
-  on regardless of what the evaluation semantics of contracts in
-  the rest of the program and even in the same TU are.</p>
-<p>Integrating C++26 contracts into standard library hardening is
-  an unimplemented specification exercise that must be undone before
-  C++26 ships.</p>
 
-<h2>This concern is nowhere to be seen in P3846</h2>
-
-<p>There are two NB comments asking for contracts to be decoupled
-  from standard library hardening, and those are FR-001-014 (<a href="https://github.com/cplusplus/nbballot/issues/588">github</a>) and US 3-015
-  (<a href="https://github.com/cplusplus/nbballot/issues/589">github</a>).
-</p>
-<p><a href="https://open-std.org/JTC1/SC22/WG21/docs/papers/2025/p3846r0.pdf">P3846</a> doesn't even mention these NB comments, and doesn't address them.</p>
-
-<h2>A library-wide 'observe' mode is not a thing for a hardened implementation</h2>
+<h2>A hardened implementation that uses 'observe' is not hardened</h2>
 
 <p>The specification says, in [structure.specifications]/3.5.1, with the problematic part bolded,</p>
 <p><pre><blockquote>When invoking the function in a hardened implementation, prior to any other observable side
@@ -80,109 +64,55 @@ program has undefined behavior</b>.</blockquote></pre></p>
   memory-safe to run into the UB that results in calling a library
   function violating its preconditions.</p>
 
-<p>Yes, there are ostensible use cases for having observed hardened
+<p>While there are use cases for having observed hardened
   preconditions, for code that's common in the wild, doesn't actually
-  run into abstract machine UB, and works fine. The current specifications
-  of hardened preconditions leave those cases out due to the language
-  not providing a way to select specific semantics for individual
-  contracts, portably. Such cases are an exception to the general rule.
-  As an example of such a use case, consider a[n] (or rather, &amp;vec[vec.size()], for a very concrete example that apparently appears in the wild)
-  for a sequence container. It has a hardened precondition "n &lt; a.size() is true". We could give it an
-  always-terminating precondition "n &lt;= a.size()", and an observed
-  precondition "n &lt; a.size()" if we could express that with the language
-  facility, but we can't do that yet.
+  run into abstract machine UB, and works fine, it doesn't make sense
+  for that to be allowed by a "hardened implementation".
+  Nothing prevents vendors from offering a "checked but not hardened" mode
+  where the hardened preconditions are evaluated using the 'observe' semantic
+  and invoking a custom violation handler. Users who want that can certainly
+  still get that, if their implementation provides it. But we should not allow
+  anybody to claim that such a mode is a conforming "hardened implementation".
 </p>
-<p>But that's a far cry from somehow being able to select an observe
-  semantic for other hardened preconditions. They have one purpose,
-  and only one, and that is to <b>guarantee</b> that violating them doesn't
-  lead to UB. Ever. That's what hardened implementations do
-  with them, and that's what hardened implementations will need
-  to continue to do with them, without compromise of any kind,
-  be it whatever other choice for contract semantics is made
-  for other code or something else, even in the same TU.</p>
 
-<h2>The wished-for "grand unification" doesn't work, and cannot work</h2>
+<p>If a piece of software has requirements that it be built using a hardened
+  implementation (e.g. due to contractual obligations for a customer,
+  or hypothetical laws that might be applied to some regulated industries)
+  then presumably there is a desire and expectation that undefined behaviour
+  resulting from violating hardened preconditions will be <b>prevented</b>,
+  not just observed and logged.</p>
 
-<p>P3846 suggests that there should be "Consistency across libraries".
-  What it seems to mean by that is that all checking mechanisms
-  are unified under the same control mechanism, and in the C++26
-  timeframe, that means whatever mechanism for selecting contract
-  evaluation semantics.</p>
+<h2>Proposed change</h2>
 
-<p>That doesn't work. It's a requirement of paramount and non-negotiable
-  importance to be able to select a hardened
-  standard library implementation regardless of what's done with any
-  and all other checking mechanisms. And when such a hardened implementation
-  is selected, it must never continue into the stdlib code in case of hardened precondition violations, it must make sure that that code isn't entered.
-  It needs to do that now, forever, and without any "maybe" period in between.
-</p>
-<p>That means that the hardened preconditions are, and have to be,
-  forever decoupled
-  from the rest of the program, including the use of whatever checking mechanisms (contracts on user code, various forms of asserts in/on user code)
-  in the same TU. You can have your own contracts, and set them
-  to ignore or observe, or enforce or quick_enforce, and you can still
-  rely on the hardened preconditions not to continue into the stdlib
-  code and cause UB. Not all of that UB is just benign dereferences of
-  null pointers that the OS will catch for you anyway. That is, if you're
-  even using an OS.</p>
+<p>We propose that in a hardened implementation, the assertions should be
+  evaluated using a terminating semantic. This would no longer allow the
+  'observe' semantic in a hardened implementation (but checking those
+  preconditions using 'observe' would still be allowed as a vendor extension
+  in modes which are not called a "hardened implementation".</p>
 
-<h2>Is this QoI?</h2>
+<p>The proposed change does not guarantee that violating a hardened
+  precondition in a program built with a hardened implementation will result
+  in the program being be contract-terminated. If a hardened implementation
+  supports replacing the contract violation handler, the program can use a
+  handler that throws, which will mean the program is not terminated.
+  However, this still avoids the concerns presented above, because throwing
+  will prevent the rest of the standard library function from being executed
+  after the precondition violation was detected. There will be no undefined
+  behaviour in the body of that function.</p>
 
-<p>A stdlib implementation can certainly make sure that the hardened
-  preconditions are always evaluated with a terminating semantic.
-  But that means that semantic is quick_enforce. C++26 contracts
-  do not have a facility that allows calling a possibly replaced
-  violation handler (they do allow invoking the implementation-defined
-  default handler, but not a replaced one),
-  so what an implementation would need to do
-  is not use contracts the language facility in its code, and
-  just terminate directly, without invoking any violation handler.</p>
-<p>But the problem of 'observe'
-  being a possibility allowed by the specification remains. Leaving
-  that possibility of observe in is just silly.
-  No standard library implementation
-  should allow for that possibility, it should just be removed from
-  the specification.</p>
+<h2>Allowing 'observe' for hardened preconditions was a mistake</h2>
 
-<p>A C++ implementation would have two options, if it tried to use
-  contracts:
-  <ol>
-    <li>Specify library-precondition-specific evaluation semantics
-      for the hardened preconditions. This option isn't viable,
-      because a mechanism for doing that doesn't exist in C++26
-      contracts, and it's also infeasible to try to rely on compiler-specific
-      mechanisms for portable stdlib implementations that need to work
-      with multiple compilers, and in multiple modes. Libstdc++, libc++, and MSVC STL support at least three compilers each, so cannot make use of compiler-specific mechanisms for using a particular semantic for hardened preconditions even when the rest of the program uses 'ignore'.</li>
-    <li>Make it so, with the help of the compiler,
-      that when hardening is enabled, all contracts in the
-      TU are given a terminating evaluation semantic. This is
-      <ul>
-	<li>draconian, it's unreasonable to do that also for all user contracts in the user's own code</li>
-	<li>infeasible still, because standard library hardening can be
-      enabled separately from the rest of the hardening facilities
-      that compilers provide, so relying on the shortcut selection
-      for a bunch of hardening options (i.e. 'g++ -fhardened') still
-	  doesn't do the right thing, and doesn't suffice.</li>
-    </li>
-  </ol>
-</p>
-<p>A far more straightforward option is to just not use contracts.</p>
+<p>
+  The authors of the standard library hardening proposal consider the change
+  proposed in this paper to be a bug fix. They agree with the position here
+  that a hardened implementation should not allow undefined behaviour after
+  a 
 
-<p>The stdlib hardening paper changed between R2 and the approved R4. Originally it was unspecified how the checks were done, only that a failure would invoke a handler and then terminate. That had the correct desired semantics.</p>
+<p>The submitters of NB comments about standard library hardening confirmed
+  that this change resolves their concerns.</p>
 
-<h2>Rumination summary</h2>
-
-<p>A hardened C++26 standard library implementation cannot be implemented
-  using Contracts the language facility. The language facility
-  doesn't provide what a hardened stdlib implementation needs.</p>
 
 <h2>Wording</h2>
-
-<p>Drafting note: this wording strives for a minimal change to the wording.
-  It doesn't attempt to provide a resolution to the NB comments that
-  ask for standard library hardening to be completely decoupled from
-  contracts. This wording does allow such a completely decoupled
-  implementation, by implementing essentially a hard-coded quick_enforce.</p>
 
 <p>In [structure.specifications]/3.1.5, edit as follows:</p>
 
