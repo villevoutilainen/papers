@@ -1,0 +1,194 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+	<title>A proposal for guaranteed-(quick-)enforced contracts</title>
+
+	<style>
+	p {text-align:justify}
+	li {text-align:justify}
+	blockquote.note
+	{
+		background-color:#E0E0E0;
+		padding-left: 15px;
+		padding-right: 15px;
+		padding-top: 1px;
+		padding-bottom: 1px;
+	}
+	ins {color:#00A000}
+	del {color:#A00000}
+	</style>
+</head>
+<body>
+
+<address align=right>
+Document number: D4005R0<br/>
+Audience: EWG<br/>
+<br/>
+<br/>
+<a href="mailto:ville.voutilainen@gmail.com">Ville Voutilainen</a><br/>
+2026-02-02<br/>
+</address>
+<hr/>
+<h1 align=center>A proposal for guaranteed-(quick-)enforced contracts</h1>
+
+<h2>Abstract</h2>
+
+<p>This paper proposes a particular form of guaranteed-enforced contracts.
+</p>
+<p>It follows the design guidance suggestions of P3919R0,
+  and differs from P3911 by
+  <ul>
+    <li>proposing a new keyword and new context-sensitive keywords
+      that are separate and different from the P2900 ones</li>
+    <li>proposing a simple approach using the existing expression
+      evaluation semantics, which has the usual consequences, including
+      but not limited to the ability to optimize based on the
+      guaranteed-enforced assertions.
+</li></ul></p>
+
+<h2>The main motivation</h2>
+
+<p>The main motivation is to provide a <em>guaranteed</em> assertion
+  facility. Such a guarantee allows programs and users to be certain
+  that the defined conditions are met, and such a guarantee therefore
+  provides various forms of (mostly memory- and ub-) safety for callers,
+  callees, readers, reviewers, and tools that they use.
+</p>
+<p>There is a noticeably strong emphasis on the word <em>guarantee</em>.
+</p>
+
+<p>That emphasis gives us a rationale for being able to declare such
+  guaranteed assertions also on the function declaration level. Suggestions
+  that such a facility is less necessary and enough functionality can be
+  provided by just a guaranteed-assertion statement miss this goal.
+  A guaranteed-assertion statement may or may not be present in a function
+  body, but that's no guarantee at all that certain conditions must be
+  met for a function to be entered, or that certain conditions must be
+  met when a function returns normally. This would become rather problematic
+  for opaque functions for which a definition isn't visible, either
+  to human readers or tools.
+</p>
+
+<h2>The main parts</h2>
+
+<p>The proposal is as follows:
+  <ol>
+    <li>add an <code>entry_cond</code> for function declarations that
+      speficies a mandatory entry condition that must evaluate
+      to true to enter the function body, or otherwise call a violation handler
+      and contract-terminate calls to said function, or directly
+      contract-terminate calls to said function.</li>
+    <li>add a <code>return_cond</code> for function declarations that
+      specifies a mandatory condition that must evaluate to true when
+      the function returns normally, or otherwise call a violation handler
+      and contract-terminate, or directly contract-terminate
+      the program when the function returns.</li>
+    <li>add a <code>mandatory_assert</code> statement that specifies
+      a condition that must evaluate to true when said statement is evaluated,
+      or otherwise call a violation handler and contract-terminate, or
+      directly contract-terminate the program.
+  </ol>
+</p>
+
+<p>In other words,
+<pre><blockquote><code>void f(int x) entry_cond(x >= 0);
+void use_it()
+{
+  f(-42); // entry_cond not met, will not continue to the subsequent code
+  void(*p)(int) = f;
+  p(-666); // entry_cond not met, will not continue to the subsequent code
+}
+
+int g(int x) return_cond(r: r >= 0)
+{
+  if (x == 42)
+    return 666; // OK    
+  else
+    return -1; // return_cond not met, will not continue to the subsequent code
+  if (x >= 0)
+    return x; // OK
+  else
+    return x; // return_cond not met, will not continue to the subsequent code
+}
+
+void h(int x)
+{
+  mandatory_assert(x >= 0); // will not continue to the subsequent code if x is negative
+}
+</code></blockquote></pre>
+
+<p>The pseudo-specification (no formal wording yet) for a call of a function
+  that declares an entry_cond is that after parameters have been initialized
+  and before the function body is entered, the expression(s) in the entry_cond(s)
+  are evaluated (as if inside the body), and if any such expression results in false, a violation handler is called and then
+  the program is contract-terminated, or the program is directly contract-terminated.</p>
+
+<p>Usual expression evaluation rules apply. The expression is evaluated
+  only once, unless it can be proven not to have side effects. The expression
+  doesn't have to be evaluated at all if its result can be otherwise determined
+  and there are no side effects.</p>
+
+<p>The pseudo-specifications for return_cond and mandatory_assert are similar.
+  A return_cond is evaluated when the function exits via a normal return,
+  before the control returns to the caller.</p>
+
+<h2>Additional semantic bits, and differences from P2900 and P3911</h2>
+
+<ul>
+  <li>a condition of an entry_cond is evaluated whenever a function is called, and is
+    then evaluated either with the 'enforce' or the 'quick_enforce' semantic. The evaluation semantic is never 'ignore' nor 'observe'. Not Even for Indirect Calls.</li>
+  <li>the conditions of return_conds and guaranteed_asserts are likewise
+    evaluated with the 'enforce' or the 'quick_enforce' semantic, and
+    never with 'ignore' nor 'observe'.</li>
+  <li>the selection mechanism for which evaluation semantic is used for any such
+    guaranteed-enforced assertion is used is implementation-defined, but
+    a conforming implementation must implement both the option of evaluating
+    such a guaranteed-enforced assertion with the 'enforce' semantic and the
+    option of evaluating such a guaranteed-enforced assertion with
+    the 'quick_enforce' semantic.</li>
+  <li>the evaluation of such assertions does not translate exceptions arising
+    out of the evaluation of the condition in any way. Such exceptions
+    fly out of the assertion, but like in P2900, cannot fly through noexcept
+    barriers of functions.</li>
+  <li>the evaluation of such assertions follows the usual expression evaluation
+    rules. There is no 'constification' or other additional transform
+    of what is evaluated.</li>
+  <li>for any two function declarations, the declarations are ODR-different if
+    they have different sets of entry_conds or return_conds.</li>
+</ul>
+
+
+<p>What is proposed here is that it is ill-formed to mix guaranteed-enforced
+  assertions and P2900 assertions in the same function declaration. That
+  is the most future-compatible approach given the C++26 time frame.</p>
+
+<p>While not really a semantic bit, and instead QoI, it's expected (but not required) that
+  the ODR-difference is ensured by implementations by mangling the
+  entry_cond/return_cond into the mangled function name.</p>
+
+<p>This mangling makes it safe to enable compiler optimizations based
+  on knowledge of the results of guaranteed-enforced assertions. If
+  an assertion would be changed so that the optimizations are no longer
+  valid, the program will not link any more due to a visible ABI break
+  caused by a name mangling change.</p>
+
+<h2>Implementation experience</h2>
+
+<p>The full form of this proposal hasn't been implemented yet.</p>
+
+<p>All the constituent bits have been:
+  <ol>
+    <li>we have implementation experience with always-enforced contract
+      assertions</li>
+    <li>we have implementation experience with a mix of contract assertions
+      with 'constification' and without</li>
+    <li>we have implementation experience with a mix of contract assertions
+      that translate predicate exceptions to contract violations and assertions
+      that don't</li>
+    <li>we have implementation experience with mangling (almost?) arbitrary expressions
+      in function declarations</li>
+        
+  </ol>
+</body>
+</html>
