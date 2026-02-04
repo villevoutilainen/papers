@@ -75,7 +75,7 @@ Audience: EWG<br/>
 <p>The proposal is as follows:
   <ol>
     <li>add an <code>entry_cond</code> for function declarations that
-      speficies a mandatory entry condition that must evaluate
+      specifies a mandatory entry condition that must evaluate
       to true to enter the function body, or otherwise call a violation handler
       and contract-terminate calls to said function, or directly
       contract-terminate calls to said function.</li>
@@ -142,7 +142,7 @@ void h(int x)
     evaluated with the 'enforce' or the 'quick_enforce' semantic, and
     never with 'ignore' nor 'observe'.</li>
   <li>the selection mechanism for which evaluation semantic is used for any such
-    guaranteed-enforced assertion is used is implementation-defined, but
+    guaranteed-enforced assertion is implementation-defined, but
     a conforming implementation must implement both the option of evaluating
     such a guaranteed-enforced assertion with the 'enforce' semantic and the
     option of evaluating such a guaranteed-enforced assertion with
