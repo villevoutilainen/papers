@@ -1,0 +1,241 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+	<title>Exploration of a more library-oriented approach to contracts</title>
+
+	<style>
+	p {text-align:justify}
+	li {text-align:justify}
+	blockquote.note
+	{
+		background-color:#E0E0E0;
+		padding-left: 15px;
+		padding-right: 15px;
+		padding-top: 1px;
+		padding-bottom: 1px;
+	}
+	ins {color:#00A000}
+	del {color:#A00000}
+	</style>
+</head>
+<body>
+<address align=right>
+Document number: D4324R0<br/>
+Audience: EWG<br/>
+<br/>
+<br/>
+<a href="mailto:ville.voutilainen@gmail.com">Ville Voutilainen</a><br/>
+2026-07-26<br/>
+</address>
+<hr/>
+<h1 align=center>Exploration of a more library-oriented approach to contracts</h1>
+
+<h2>Abstract</h2>
+
+<p>This paper supplies a design and implementation exploration
+  for a more library-oriented approach to contracts.
+</p>
+<p>The goal of the exploration is to look at an alternative model
+  that is less compiler-dependent, more library-oriented, and by
+  being especially the latter, more flexible and more user-extensible.
+</p>
+<p>It may well have been the goal of P2900 and everything that came
+  after it, including P3400, to keep the design(s) rigid and extensible
+  only through committee action, with the goal of maintaining certain
+  prime directives and principles.</p>
+<p>This exploration quite intentionally chooses a completely different
+  set of trade-offs, and provides user-extensibility, user-configurability
+  and user-overrideability over all else.
+</p>
+
+<p>This exploration is heavily based on ideas formulated in Bengt
+  Gustafsson's paper <a href="https://wg21.link/p3968">P3968</a>,
+  but also builds on various other papers such as <a href="https://wg21.link/p4005">P4005</a> and <a href="https://wg21.link/p4009">P4009</a>, attempting
+  to further refine those papers and address the review feedback given
+  for them. The paper also builds on various analyses and ruminations
+  performed on <a href="https://wg21.link/p3400">P3400</a>.
+</p>
+
+<h2>The goal, elaborated</h2>
+
+<p>The goal of this approach is to provide a programmatic framework
+  for expressing different needs for assertions, in different domains.
+  There are various such needs that have already been communicated,
+  such as being able to:
+</p>
+  <ul>
+    <li>turn off constification</li>
+    <li>write contracts that do not translate predicate
+      exceptions into contract violations, but pass such exceptions through</li>
+    <li>write contracts that are always checked, and always enforced</li>
+    <li>write contracts that, when enforced, terminate directly, without
+      calling a violation handler (this is a library version of the
+      quick_enforce semantic, that could have been used to add such
+      a semantic in practice, if a framework like this had existed,
+      and standardize it later)</li>
+    <li>write contracts that, when enforced or observed,
+      call the violation handler, but do not let exceptions escape
+      the violation handler (this is a library version of the
+      ruminated noexcept_enforce and noexcept_observe semantics)</li>
+    <li>write contracts that define exactly what sort of termination
+      is used (this is a library version of a possible implementation-defined
+      mechanism for deciding what contract-termination does)</li>
+  </ul>
+
+<p>The framework also facilitates certain other desires that have been
+  mentioned, such as being able to:</p>
+  <ul>
+    <li>write contracts that evaluate a predicate multiple times,
+      to verify that the predicate doesn't have undesirable
+      side effects</li>
+    <li>write contracts that are enabled statically, but disabled
+      (or otherwise semantic-controlled) at run-time</li>
+  </ul>
+
+<p>Some of these things are things that have been on the committee's agenda
+  during the development of C++26 contracts. Some of them are possible
+  implementation-defined mechanisms allowed by the standard. Some of
+  them are facilities that may end up being on the committee's agenda
+  to extend the C++26 contracts, or are already on that agenda.</p>
+
+<p>This framework allows Just Doing them, in (3rd party) library code,
+  which could later become standard library code.</p>
+
+<h2>The approach</h2>
+
+<p>Let's first look at what the compiler does for a C++26 contract:</p>
+
+<ol>
+  <li>an assertion is parsed</li>
+  <li>if the semantic is ignore, the assertion is ignored and the algorithm
+    stops here</li>
+  <li>and constified</li>
+  <li>an expression is created for the predicate</li>
+  <li>a call expression or function definition is transformed to
+  <ol type="a">
+    <li>evaluate the predicate</li>
+    <li>based on the result, either terminate, or invoke the violation
+      handler, and after the violation handler returns, terminate
+      or continue</li>
+    <li>and the evaluation is done so that exceptions thrown by the
+      predicate are translated into contract violations and the violation
+      handler is called with such violations.</li>
+  </ol></li>
+</ol>
+
+<p>In this approach, it will be:</p>
+<ol type="i">
+  <li>an assertion is parsed</li>
+  <li>based on the contract control object named (or the default) in
+    the assertion, a contract may be ignored, and the algorithm stops here</li>
+  <li>based on the contract control object named (or the default) in
+    the assertion, constification is or is not performed</li>
+  <li>a function is created for the predicate</li>
+  <li>a call to the call operator of the contract control is emitted, passing
+    in the function and an opaque handle representing the arguments
+    of a function in case of a function contract assertion.</li>
+</ol>
+<h2>The building blocks</h2>
+
+<p>To go straight to the point, the syntactic keying used here
+  is similar to P3400: <code>void f(int x) pre&lt;cco&gt;(x >= 0);</code>
+  and similarly for <code>post</code> and <code>contract_assert</code>.
+  The <code>cco</code> in <code>pre&lt;cco&gt;</code> stands
+  for Contract Control Object.</p>
+
+<p>And that's what it is - an object that controls the semantics
+  and the behavior of the contract.</p>
+
+<p>Pay particular attention to "and the behavior". These control
+  objects don't just compute semantics used by language-internal
+  implementations of the standard semantics, they <em>implement</em>
+  the semantics.</p>
+
+<p>Right. Onto the actual building blocks.</p>
+
+<p>We need
+</p>
+<ul>
+  <li>a language&lt;-&gt;library facility to allow the library-side control
+    object to tell the language that an assertion is ignored. This
+    causes there to be no checks emitted, as expected for the ignore
+    semantic.</li>
+  <li>a similar facility to allow the library-side control object to tell the
+    language whether the predicate expression should be constified or not.</li>
+  <li>a facility that allows the language to expose the predicate to
+    the library-side control object as a callable.</li>
+  <li>a facility that allows the language to expose the assertion
+    metadata (assertion kind, semantic, comment,
+    source location) to the library-side control object.</li>
+</ul>
+<p>In addition, we need</p>
+<ul>
+  <li>a way for the language to tell the library
+    code what the implementation's configuration is for user-chosen
+    contract-semantics</li>
+  <li>a mechanism for the library code to invoke the violation
+    handler with the arguments (semantic, assertion kind,
+    detection mode, comment, source location).</li>
+</ul>
+
+<h3>The concrete building blocks</h3>
+
+<p>The type of a contract control object has:</p>
+<ol>
+  <li>a <code>static constexpr bool is_ignored(evaluation_semantic);</code></li>
+  <li>a <code>static bool constify;</code></li>
+</ol>
+
+<p>These give us steps ii and iii.</p>
+
+<p>For step v, the type of a contract control object also has:</p>
+<ol>
+  <li>a <code>void operator()(const assertion_context&amp;);</code></li>
+</ol>
+<p>and assertion_context is</p>
+<blockquote><pre><code>  struct assertion_context {
+    constexpr const char* comment() const noexcept;
+    constexpr std::source_location location() const noexcept;
+    constexpr evaluation_semantic semantic() const noexcept;
+    constexpr assertion_kind kind() const noexcept;
+    constexpr bool check();
+
+  private:
+    void* __args; // exposition-only
+    bool (*__check)(void*); // exposition-only
+  };
+</code></pre></blockquote>
+
+<p>For invoking the violation handler, there is a function</p>
+<blockquote><pre><code>  void invoke_violation_handler(assertion_kind kind,
+                                       evaluation_semantic semantic,
+                                       detection_mode mode,
+                                       const char* comment,
+                                       std::source_location loc);
+</code></pre></blockquote>
+
+<h2>Implementation experience</h2>
+
+<p>This approach has been implemented in a fork of GCC,
+  at <a href="https://github.com/villevoutilainen/gcc/tree/p4324">https://github.com/villevoutilainen/gcc/tree/p4324</a>.</p>
+
+<p>The compiler is available on godbolt, as "X86-64 gcc (P4324 contracts)".</p>
+
+<h3>Examples</h3>
+
+<p>A pure-library version of quick_enforce; calls abort() on enforce,
+  calls the violation handler on observe, ignores on ignore:
+  <a href="https://godbolt.org/z/1fc1hbhr5">Library quick_enforce on godbolt</a>
+</p>
+<p>A pure-library version of noexcept_enforce/noexcept_observe: <a href="https://godbolt.org/z/KTdbo5j9n">Library noexcept_enforce/noexcept_observe on godbolt</a></p>
+<p>Same example in the case where the handler throws: <a href="https://godbolt.org/z/bvMW3Gjv5">Library noexcept_enforce/noexcept_observe on godbolt, with a handler throw</a></p>
+<p>An example of a contract that lets predicate exceptions through: <a href="https://godbolt.org/z/cx9738TsG">A throwing predicate, exception passed through, on godbolt</a></p>
+<p>Same example, but we catch the exception and call the violation handler: <a href="https://godbolt.org/z/3no1veG3x">A throwing predicate, exception caught, on godbolt</a></p>
+<p>An example of zero overhead (which can also be achieved with C++26 quick_enforce, but this shows it's attainable here too): <a href="https://godbolt.org/z/zK7ra7K1G">Zero-overhead example</a></p>
+<p>A contract that is always checked and always enforced: <a href="https://godbolt.org/z/xnTan19va">An always-on/enforced contract on godbolt</a></p>
+<p>A contract that is ignored at run-time based on an environment variable: <a href="https://godbolt.org/z/a6d1hhd5G">A run-time-ignored contract on godbolt</a></p>
+<p>A contract that carries a custom diagnostic message: <a href="https://godbolt.org/z/Pjdd59WEd">A contract with a custom message on godbolt</a></p>
+<p>The facility integrated to the standard library, implementing the hardened standard library: <a href="https://godbolt.org/z/5szhM1T5K">Library hardening with P4324 on godbolt</a></p>
+</body>
+</html>
