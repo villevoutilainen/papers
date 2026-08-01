@@ -181,17 +181,27 @@ Audience: EWG<br/>
 
 <h3>The concrete building blocks</h3>
 
+<p>We use a static-property information class:</p>
+<blockquote><pre><code>  class assertion_static_info {
+  public:
+    constexpr evaluation_semantic semantic() const noexcept;
+    constexpr assertion_check_side side() const noexcept;
+    constexpr bool is_virtual() const noexcept;
+    constexpr bool overrides_virtual() const noexcept;
+  };
+</code></pre></blockquote>
+
 <p>The type of a contract control object has:</p>
 <ol>
-  <li>a <code>static constexpr bool is_ignored(evaluation_semantic);</code></li>
-  <li>a <code>static bool constify;</code></li>
+  <li>a <code>static constexpr bool is_ignored(assertion_static_info);</code></li>
+  <li>a <code>static constexpr bool constify(assertion_static_info);</code></li>
 </ol>
 
 <p>These give us steps ii and iii.</p>
 
 <p>For step v, the type of a contract control object also has:</p>
 <ol>
-  <li>a <code>void operator()(const assertion_context&amp;);</code></li>
+  <li>a <code>constexpr void operator()(const assertion_context&amp;);</code></li>
 </ol>
 <p>and assertion_context is</p>
 <blockquote><pre><code>  struct assertion_context {
