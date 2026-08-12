@@ -108,14 +108,14 @@ Audience: EWG<br/>
 
 <ol>
   <li>an assertion is parsed</li>
-  <li>if the semantic is ignore, the assertion is ignored and the algorithm
-    stops here</li>
   <li>and constified</li>
   <li>an expression is created for the predicate</li>
+  <li>if the semantic is ignore, the assertion is ignored and the algorithm
+    stops here</li>
   <li>a call expression or function definition is transformed to
   <ol type="a">
     <li>evaluate the predicate</li>
-    <li>based on the result, either terminate, or invoke the violation
+    <li>if the result is false, either terminate, or invoke the violation
       handler, and after the violation handler returns, terminate
       or continue</li>
     <li>and the evaluation is done so that exceptions thrown by the
@@ -128,9 +128,10 @@ Audience: EWG<br/>
 <ol type="i">
   <li>an assertion is parsed</li>
   <li>based on the contract control object named (or the default) in
-    the assertion, a contract may be ignored, and the algorithm stops here</li>
-  <li>based on the contract control object named (or the default) in
     the assertion, constification is or is not performed</li>
+  <li>an expression is created for the predicate</li>
+  <li>based on the contract control object named (or the default) in
+    the assertion, a contract may be ignored, and the algorithm stops here</li>
   <li>a function is created for the predicate</li>
   <li>a call to the call operator of the contract control is emitted, passing
     in the function and an opaque handle representing the arguments
