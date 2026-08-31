@@ -248,5 +248,52 @@ Audience: EWG<br/>
 <p>A contract that is ignored at run-time based on an environment variable: <a href="https://godbolt.org/z/a6d1hhd5G">A run-time-ignored contract on godbolt</a></p>
 <p>A contract that carries a custom diagnostic message: <a href="https://godbolt.org/z/Pjdd59WEd">A contract with a custom message on godbolt</a></p>
 <p>The facility integrated to the standard library, implementing the hardened standard library: <a href="https://godbolt.org/z/5szhM1T5K">Library hardening with P4324 on godbolt</a></p>
+
+<h2>Wording</h2>
+
+<p>In [dcl.contract.func], change the grammar:</p>
+
+<BLOCKQUOTE>
+<PRE>
+<I>precondition-specifier</I>:
+    pre <ins><I>contract-control</I><SUB>opt</SUB></ins> <I>attribute-specifier-seq</I><SUB>opt</SUB> ( <I>conditional-expression</I> )
+<I>postcondition-specifier</I>:
+    post <ins><I>contract-control</I><SUB>opt</SUB></ins> <I>attribute-specifier-seq</I><SUB>opt</SUB> ( <I>result-name-introducer</I><SUB>opt</SUB> <I>conditional-expression</I> )
+<ins><I>contract-control</I>:
+    &lt; <I>constant-expression</I> &gt;</ins>
+</PRE>
+</BLOCKQUOTE>
+
+<p>In [contracts.syn] p1, add:</P>
+
+<BLOCKQUOTE>
+<PRE>
+  ...
+<ins>  class assertion_static_info {
+  public:
+    consteval evaluation_semantic semantic() const noexcept;
+    consteval assertion_check_side side() const noexcept;
+    consteval bool is_virtual() const noexcept;
+    consteval bool overrides_virtual() const noexcept;
+  };
+
+  struct assertion_context {
+    constexpr const char* comment() const noexcept;
+    constexpr std::source_location location() const noexcept;
+    constexpr evaluation_semantic semantic() const noexcept;
+    constexpr assertion_kind kind() const noexcept;
+    constexpr bool check();
+  };
+
+  void invoke_violation_handler(assertion_kind kind,
+                                       evaluation_semantic semantic,
+                                       detection_mode mode,
+                                       const char* comment,
+                                       std::source_location loc);
+</ins>
+  void invoke_default_contract_violation_handler(const contract_violation&amp;);
+</PRE>
+</BLOCKQUOTE>
+
 </body>
 </html>
