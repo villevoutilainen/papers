@@ -251,7 +251,52 @@ Audience: EWG<br/>
 
 <h2>Wording</h2>
 
-<p>In [dcl.contract.func], change the grammar:</p>
+<p>Change in [basic.contract.general] p2:</p>
+
+<BLOCKQUOTE>
+
+<ins>Each contract assertion has a <I>contract-assertion control object</I>,
+which determines the behavior of the contract assertion.</ins>
+Each contract assertion has a <I>contract-assertion predicate</I>,
+which is an expression of type bool.  [<I>Note 1:</I> The value of
+the predicate is used to identify program states that are
+expected. &#8212;<I>end note</I>]
+
+</BLOCKQUOTE>
+
+<p>Add TODO somewhere in [basic.contract.general]:</p>
+
+<BLOCKQUOTE>
+<ins>Given an lvalue designating a control object <I>o</I>,
+an lvalue or xvalue <I>a</I> of type <TT>std::assertion_static_info</TT>,
+and an lvalue <I>c</I> of type "<TT>const std::assertion_context</TT>",
+</ins>
+<UL>
+<LI><ins><TT><I>o</I>.is_ignored(<I>a</I>)</TT> and
+<ins><TT><I>o</I>.constify(<I>a</I>)</TT>
+shall each be prvalue constant expressions of type <TT>bool</TT> and</ins></LI>
+<LI><ins><TT><I>o</I>(<I>c</I>)</TT> shall be a prvalue of type <TT>void</TT>.</ins></LI>
+</UL>
+</BLOCKQUOTE>
+
+<p>In [stmt.contract.assert], change the grammar and paragraph 2:</p>
+
+<BLOCKQUOTE>
+<PRE>
+<I>assertion-statement</I>:
+  contract_assert <ins><I>contract-control</I><SUB>opt</SUB></ins> <I>attribute-specifier-seq</I><SUB>opt</SUB> ( <I>conditional-expression</I> ) ;
+</PRE>
+<P>[...]</P>
+<ins>The control object ([basic.contract.general]) of
+an <I>assertion-statement</I> is the value of
+the <I>constant-expression</I> of its <I>contract-control</I>, if
+present, and otherwise an implementation-defined control object.</ins>
+The predicate <del>([basic.contract.general]</del> of
+an <I>assertion-statement</I> is its <I>conditional-expression</I>
+contextually converted to bool.
+
+</BLOCKQUOTE>
+<p>In [dcl.contract.func], change the grammar and paragraph 2:</p>
 
 <BLOCKQUOTE>
 <PRE>
@@ -262,6 +307,14 @@ Audience: EWG<br/>
 <ins><I>contract-control</I>:
     &lt; <I>constant-expression</I> &gt;</ins>
 </PRE>
+<P>[...]</P>
+<ins>The control object ([basic.contract.general]) of
+a function contract assertion is the value of
+the <I>constant-expression</I> of its <I>contract-control</I>, if
+present, and otherwise an implementation-defined control object.</ins>
+The predicate <del>([basic.contract.general])</del> of a function contract assertion
+is its <I>conditional-expression</I> contextually converted to bool.
+
 </BLOCKQUOTE>
 
 <p>In [contracts.syn] p1, add:</P>
