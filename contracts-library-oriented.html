@@ -21,12 +21,12 @@
 </head>
 <body>
 <address align=right>
-Document number: D4324R0<br/>
+Document number: D4324R1<br/>
 Audience: EWG<br/>
 <br/>
 <br/>
 <a href="mailto:ville.voutilainen@gmail.com">Ville Voutilainen</a><br/>
-2026-08-14<br/>
+2026-09-02<br/>
 </address>
 <hr/>
 <h1 align=center>Exploration of a more library-oriented approach to contracts</h1>
@@ -237,12 +237,12 @@ Audience: EWG<br/>
 
 <p>A pure-library version of quick_enforce; calls abort() on enforce,
   calls the violation handler on observe, ignores on ignore:
-  <a href="https://godbolt.org/z/1fc1hbhr5">Library quick_enforce on godbolt</a>
+  <a href="https://godbolt.org/z/1zb6dec4f">Library quick_enforce on godbolt</a>
 </p>
-<p>A pure-library version of noexcept_enforce/noexcept_observe: <a href="https://godbolt.org/z/KTdbo5j9n">Library noexcept_enforce/noexcept_observe on godbolt</a></p>
-<p>Same example in the case where the handler throws: <a href="https://godbolt.org/z/bvMW3Gjv5">Library noexcept_enforce/noexcept_observe on godbolt, with a handler throw</a></p>
+<p>A pure-library version of noexcept_enforce/noexcept_observe: <a href="https://godbolt.org/z/a4x3EYsxd">Library noexcept_enforce/noexcept_observe on godbolt</a></p>
+<p>Same example in the case where the handler throws: <a href="https://godbolt.org/z/8do4Enf7G">Library noexcept_enforce/noexcept_observe on godbolt, with a handler throw</a></p>
 <p>An example of a contract that lets predicate exceptions through: <a href="https://godbolt.org/z/cx9738TsG">A throwing predicate, exception passed through, on godbolt</a></p>
-<p>Same example, but we catch the exception and call the violation handler: <a href="https://godbolt.org/z/3no1veG3x">A throwing predicate, exception caught, on godbolt</a></p>
+<p>Same example, but we catch the exception and call the violation handler: <a href="https://godbolt.org/z/vfWsbnE58">A throwing predicate, exception caught, on godbolt</a></p>
 <p>An example of zero overhead (which can also be achieved with C++26 quick_enforce, but this shows it's attainable here too): <a href="https://godbolt.org/z/zK7ra7K1G">Zero-overhead example</a></p>
 <p>A contract that is always checked and always enforced: <a href="https://godbolt.org/z/xnTan19va">An always-on/enforced contract on godbolt</a></p>
 <p>A contract that is ignored at run-time based on an environment variable: <a href="https://godbolt.org/z/a6d1hhd5G">A run-time-ignored contract on godbolt</a></p>
