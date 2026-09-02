@@ -210,6 +210,8 @@ Audience: EWG<br/>
     constexpr std::source_location location() const noexcept;
     constexpr evaluation_semantic semantic() const noexcept;
     constexpr assertion_kind kind() const noexcept;
+    constexpr const assertion_static_info&amp; static_info() const noexcept;
+    constexpr assertion_info info() const noexcept;
     constexpr bool check();
 
   private:
@@ -218,12 +220,28 @@ Audience: EWG<br/>
   };
 </code></pre></blockquote>
 
+<p>and assertion_info is</p>
+
+<blockquote><pre><code>  class assertion_info
+  {
+  public:
+    constexpr
+    assertion_info (const char* __comment, std::source_location __location,
+		    evaluation_semantic __semantic, assertion_kind __kind) noexcept;
+    constexpr const char* comment() const noexcept;
+    constexpr std::source_location location() const noexcept;
+    constexpr evaluation_semantic semantic() const noexcept;
+    constexpr assertion_kind kind() const noexcept;
+
+    constexpr void set_comment(const char* __comment) noexcept;
+    constexpr void set_location(std::source_location __location) noexcept;
+    constexpr void set_semantic(evaluation_semantic __semantic) noexcept;
+    constexpr void set_kind(assertion_kind __kind) noexcept;
+  };
+</code></pre></blockquote>
+     
 <p>For invoking the violation handler, there is a function</p>
-<blockquote><pre><code>  void invoke_violation_handler(assertion_kind kind,
-                                       evaluation_semantic semantic,
-                                       detection_mode mode,
-                                       const char* comment,
-                                       std::source_location loc);
+<blockquote><pre><code>  void invoke_violation_handler(const assertion_info&amp; info, detection_mode mode);
 </code></pre></blockquote>
 
 <h2>Implementation experience</h2>
